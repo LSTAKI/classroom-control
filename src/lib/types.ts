@@ -48,7 +48,7 @@ export type Homework = {
 
 export type CalendarEvent = {
   id: string;
-  type: 'homework' | 'event' | 'holiday';
+  type: 'homework' | 'event' | 'holiday' | 'meeting';
   title: string;
   date: string; // ISO string
   description?: string;

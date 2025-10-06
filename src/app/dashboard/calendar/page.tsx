@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import AiEventSuggester from '@/components/ai-event-suggester';
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
+import AddEventDialog from '@/components/add-event-dialog';
 
 export default function CalendarPage() {
     const { calendarEvents, isLoading } = useCalendarEvents();
@@ -49,7 +50,10 @@ export default function CalendarPage() {
         <div>
             <div className="flex justify-between items-center">
                 <PageHeader title="Calendar" description="View and manage class events, deadlines, and holidays." />
-                <AiEventSuggester events={calendarEvents} />
+                <div className='flex gap-2'>
+                  <AiEventSuggester events={calendarEvents} />
+                  <AddEventDialog />
+                </div>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 mt-6">

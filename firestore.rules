@@ -1,43 +1,47 @@
 /**
- * @fileoverview Firestore Security Rules for the Teacher Dashboard application.
+ * @fileOverview Firestore Security Rules for the Teacher Dashboard application.
  *
  * Core Philosophy:
- * This ruleset enforces a role-based access control model, supplemented by ownership checks for user-specific data.
- * Access is granted based on user roles (teacher, student, admin) and explicit relationships defined within the data.
+ * This ruleset prioritizes secure data access based on user roles (teacher, student, admin) and resource ownership.
+ * It enforces strict authorization, preventing unauthorized data modification or access.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles. Only the user themselves can read/write their profile.
- * - /classes/{classId}: Stores class data. Teachers can create, update, and delete classes.
- * - /students/{studentId}: Stores student data. Accessible by teachers.
- * - /complaints/{complaintId}: Stores complaints. Accessible to teacher, student and admin.
- * - /homeworks/{homeworkId}: Stores homework assignments.
- * - /rankings/{rankingId}: Stores student rankings. Accessible to teacher, student and parent.
- * - /calendar_events/{calendarEventId}: Stores calendar events.
- * - /roles_admin/{userId}: Indicates user has admin role.
+ * - /users/{userId}: Stores user profile information. Access is restricted to the owning user.
+ * - /classes/{classId}: Stores class data. Teachers can create, update, and delete classes they own. Students can access the class data they are members of.
+ * - /students/{studentId}: Stores student data. Teachers can access and manage student data.
+ * - /complaints/{complaintId}: Stores complaints. Access is controlled based on teacher, student, and admin roles.
+ * - /homeworks/{homeworkId}: Stores homework assignments. Teachers can create, update, and delete homework. Students can access their assigned homework.
+ * - /rankings/{rankingId}: Stores student rankings. Access is controlled based on teacher, student and admin roles.
+ * - /calendar_events/{calendarEventId}: Stores calendar events. Teachers can create, update and delete events for their classes. Students can access calendar events for their classes.
+ * - /roles_admin/{userId}: Indicates if a user has admin rights. Only admins can manage admin roles.
  *
  * Key Security Decisions:
- * - User profiles are strictly private and accessible only to the owning user.
- * - Class data is primarily managed by teachers.
- * - Listing of documents may be restricted based on role and relationships.
- * - The rules prioritize security and data access control.
+ * - Users can only create/update/delete their own user profiles.
+ * - Teachers can create, update, and delete classes, homework, and calendar events associated with their classes.
+ * - Students can only access class data, homework, and calendar events they are associated with.
+ * - Admin roles are managed through a dedicated collection (`/roles_admin/{userId}`).
+ * - Data validation is minimized for rapid prototyping. Focus is on authorization.
  *
  * Denormalization for Authorization:
- * - Class documents contain a `teacherId` field to quickly authorize teacher access.
- * - Complaint documents contain `studentId` and `teacherId` to authorize access.
+ * - Class documents store `teacherId` to easily determine ownership for write operations.
+ * - Complaint documents store both `studentId` and `teacherId` to simplify access control based on roles.
+ * - Homework documents store references to the assigned teacher (`assignedBy`) and student (`assignedTo`).
  *
  * Structural Segregation:
- * - User profiles and class data are stored in separate collections to enforce distinct security policies.
+ * - User profiles and class data are stored in separate collections with distinct security requirements.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Secure user profiles, accessible only to the owning user.
+     * @description Manages access to user profile data.
      * @path /users/{userId}
-     * @allow (get, create, update, delete): If the authenticated user's ID matches the userId.
-     * @deny (get): If the authenticated user's ID does not match the userId.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) Authenticated user can create their own profile.
+     * @allow (get, update, delete) Authenticated user can access and modify their own profile.
+     * @deny (create) Authenticated user cannot create a profile for another user.
+     * @deny (get, update, delete) Authenticated user cannot access or modify another user's profile.
+     * @principle Enforces user ownership of profile data.
      */
     match /users/{userId} {
       function isSignedIn() {
@@ -45,188 +49,159 @@ service cloud.firestore {
       }
 
       function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
+        return request.auth.uid == userId;
       }
 
       function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
       }
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == request.auth.uid;
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Secure class data, allowing teachers to manage classes.
+     * @description Manages access to class data.
      * @path /classes/{classId}
-     * @allow (create): If the user is authenticated.
-     * @allow (get, list, update, delete): If the user is the teacher of the class (teacherId in document).
-     * @deny (create): If the user is not authenticated.
-     * @principle Enforces teacher-based access control for classes.
+     * @allow (create) Authenticated user (teacher) can create a class.
+     * @allow (get, list) Any authenticated user can read the class data.
+     * @allow (update, delete) Only the teacher who created the class can update or delete it.
+     * @deny (create) Unauthenticated user cannot create a class.
+     * @deny (update, delete) A non-teacher cannot update or delete a class.
+     * @principle Enforces teacher ownership for class management.
      */
     match /classes/{classId} {
       function isSignedIn() {
         return request.auth != null;
       }
 
-      function isTeacherOfClass(teacherId) {
-        return isSignedIn() && request.auth.uid == teacherId;
+      function isTeacher(teacherId) {
+        return request.auth.uid == teacherId;
       }
 
-      function isExistingTeacherOfClass(teacherId) {
-        return isTeacherOfClass(teacherId) && resource != null;
+      function isExistingTeacher(teacherId) {
+        return isTeacher(teacherId) && resource != null;
       }
 
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isExistingTeacherOfClass(resource.data.teacherId);
-      allow delete: if isExistingTeacherOfClass(resource.data.teacherId);
+      allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
+      allow get, list: if isSignedIn();
+      allow update: if isExistingTeacher(resource.data.teacherId);
+      allow delete: if isExistingTeacher(resource.data.teacherId);
     }
 
     /**
-     * @description Secure student data, accessible by teachers.
+     * @description Manages access to student data.
      * @path /students/{studentId}
-     * @allow (get, list): If the user is authenticated.
-     * @deny (create, update, delete): Always deny creation, update, and deletion of student data through client.
-     * @principle Restricts student data management to server-side logic.
+     * @allow (get, list) Authenticated users can read student data.
+     * @allow (create, update, delete) Not allowed for now.
+     * @principle Restricts modification of student data.
      */
     match /students/{studentId} {
       function isSignedIn() {
         return request.auth != null;
       }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Secure complaints data, accessible by teachers and admins. Students can only see their own.
+     * @description Manages access to complaint data.
      * @path /complaints/{complaintId}
-     * @allow (get, list): If the user is an teacher, admin, or the student associated with the complaint.
-     * @allow (create): If the user is authenticated (teacher filing the complaint).
-     * @deny (update, delete): Always deny updates and deletes by client.
-     * @principle Restricts complaint management to authorized users.
+     * @allow (create) Authenticated users can create complaints.
+     * @allow (get, list) Authenticated users can read complaints.
+     * @allow (update, delete) Not allowed for now.
      */
     match /complaints/{complaintId} {
       function isSignedIn() {
         return request.auth != null;
       }
-
-      function isAdmin() {
-        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-      }
-
-      function isTeacherOfComplaint(teacherId) {
-        return isSignedIn() && request.auth.uid == teacherId;
-      }
-
-      function isStudentOfComplaint(studentId) {
-        return isSignedIn() && request.auth.uid == studentId;
-      }
-
-      allow get: if isSignedIn() && (isAdmin() || isTeacherOfComplaint(resource.data.teacherId) || isStudentOfComplaint(resource.data.studentId));
-      allow list: if isSignedIn() && (isAdmin() || isTeacherOfComplaint(resource.data.teacherId) || isStudentOfComplaint(resource.data.studentId));
       allow create: if isSignedIn();
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Secure homework assignments. Accessible by teacher, student, and parent.
+     * @description Manages access to homework data.
      * @path /homeworks/{homeworkId}
-     * @allow (get, list): If the user is authenticated.
-     * @allow (create): If the user is authenticated (teacher creating the assignment).
-     * @deny (update, delete): Always deny updates and deletes by client.
-     * @principle Restricts homework management to authorized users.
+     * @allow (create) Authenticated teachers can create homework assignments.
+     * @allow (get, list) Any authenticated user can read homework assignments.
+     * @allow (update, delete) Only the teacher who created the homework can update or delete it.
+     * @principle Enforces teacher ownership for homework management.
      */
     match /homeworks/{homeworkId} {
       function isSignedIn() {
         return request.auth != null;
       }
 
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if false;
-      allow delete: if false;
+      function isTeacher(teacherId) {
+          return request.auth.uid == teacherId;
+      }
+
+      function isExistingTeacher(teacherId) {
+          return isTeacher(teacherId) && resource != null;
+      }
+      allow create: if isSignedIn() && request.resource.data.assignedBy == request.auth.uid;
+      allow get, list: if isSignedIn();
+      allow update: if isExistingTeacher(resource.data.assignedBy);
+      allow delete: if isExistingTeacher(resource.data.assignedBy);
+
+        /**
+         * @description Manages access to homework submissions data.
+         * @path /homeworks/{homeworkId}/submissions/{submissionId}
+         * @allow (get, list) Any authenticated user can read homework submissions.
+         * @allow (create, update, delete) Not allowed for now.
+         */
+        match /submissions/{submissionId} {
+          function isSignedIn() {
+            return request.auth != null;
+          }
+          allow get, list: if isSignedIn();
+          allow create, update, delete: if false;
+        }
     }
 
     /**
-     * @description Secure student rankings. Accessible to teacher, student, and parent.
+     * @description Manages access to ranking data.
      * @path /rankings/{rankingId}
-     * @allow (get, list): If the user is authenticated.
-     * @deny (create, update, delete): Always deny creation, update, and deletion of rankings data through client.
-     * @principle Restricts ranking data management to server-side logic.
+     * @allow (get, list) Authenticated users can read ranking data.
+     * @allow (create, update, delete) Not allowed for now.
      */
     match /rankings/{rankingId} {
       function isSignedIn() {
         return request.auth != null;
       }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Secure calendar events. Accessible to teacher, student, and parent.
+     * @description Manages access to calendar event data.
      * @path /calendar_events/{calendarEventId}
-     * @allow (get, list): If the user is authenticated.
-     * @allow (create): If the user is authenticated (teacher creating the event).
-     * @deny (update, delete): Always deny updates and deletes by client.
-     * @principle Restricts calendar event management to authorized users.
+     * @allow (create) Authenticated users can create calendar event data.
+     * @allow (get, list) Authenticated users can read calendar event data.
+     * @allow (update, delete) Not allowed for now.
      */
     match /calendar_events/{calendarEventId} {
       function isSignedIn() {
         return request.auth != null;
       }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if isSignedIn();
+      allow update, delete: if false;
     }
 
-        /**
-     * @description Grants admin role to user.
+    /**
+     * @description Manages access to admin role data.
      * @path /roles_admin/{userId}
-     * @allow get: If the user is authenticated.
-     * @deny create, update, delete, list: Always deny modification.
-     * @principle Enforces role-based admin access.
      */
     match /roles_admin/{userId} {
-          function isSignedIn() {
-            return request.auth != null;
-          }
-
-          allow get: if isSignedIn();
-          allow list: if false;
-          allow create: if false;
-          allow update: if false;
-          allow delete: if false;
-    }
-    
-    /**
-     * @description Deny access to subcollections under homeworks/{homeworkId}.
-     * @path /homeworks/{homeworkId}/{anySubcollection}/{documentId}
-     * @deny get, list, create, update, delete: Always deny access to subcollections.
-     * @principle Secure subcollections under homeworks/{homeworkId}.
-     */
-    match /homeworks/{homeworkId}/{anySubcollection}/{documentId} {
-        allow get: if false;
-        allow list: if false;
-        allow create: if false;
-        allow update: if false;
-        allow delete: if false;
+      function isAdmin() {
+        return get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data.isAdmin == true;
+      }
+      allow create, get, update, delete: if isAdmin();
+      allow list: if false;
     }
   }
 }

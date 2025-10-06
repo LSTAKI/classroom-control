@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useFirestore, useUser, setDocumentNonBlocking } from '@/firebase';
-import { doc }from 'firebase/firestore';
+import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { doc, collection }from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import PageHeader from '@/components/page-header';
@@ -34,10 +34,38 @@ const complaintsData = [
 ];
 
 const homeworkData = [
-    { title: 'Algebra Chapter 5', subject: 'Math', description: 'Complete all exercises in chapter 5.', dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), status: 'Assigned', attachments: [] },
-    { title: 'Cell Biology Report', subject: 'Science', description: 'Write a 2-page report on cell mitosis.', dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), status: 'Assigned', attachments: [] },
-    { title: 'Geometry Proofs', subject: 'Math', description: 'Solve the provided worksheet on geometric proofs.', dueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), status: 'Checked', attachments: [] },
+    { id: 'hw-1', title: 'Algebra Chapter 5', subject: 'Math', description: 'Complete all exercises in chapter 5.', dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), status: 'Assigned', attachments: [] },
+    { id: 'hw-2', title: 'Cell Biology Report', subject: 'Science', description: 'Write a 2-page report on cell mitosis.', dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), status: 'Assigned', attachments: [] },
+    { id: 'hw-3', title: 'Geometry Proofs', subject: 'Math', description: 'Solve the provided worksheet on geometric proofs.', dueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), status: 'Checked', attachments: [] },
 ];
+
+const submissionsData = {
+    'hw-1': [
+        { studentId: 'student-1', status: 'Submitted', submittedAt: new Date().toISOString() },
+        { studentId: 'student-2', status: 'Submitted', submittedAt: new Date().toISOString() },
+        { studentId: 'student-3', status: 'Pending' },
+        { studentId: 'student-4', status: 'Checked' },
+        { studentId: 'student-5', status: 'Incomplete' },
+        { studentId: 'student-6', status: 'Submitted', submittedAt: new Date().toISOString() },
+    ],
+    'hw-2': [
+        { studentId: 'student-1', status: 'Pending' },
+        { studentId: 'student-2', status: 'Submitted', submittedAt: new Date().toISOString() },
+        { studentId: 'student-3', status: 'Pending' },
+        { studentId: 'student-4', status: 'Pending' },
+        { studentId: 'student-5', status: 'Submitted', submittedAt: new Date().toISOString() },
+        { studentId: 'student-6', status: 'Submitted', submittedAt: new Date().toISOString() },
+    ],
+    'hw-3': [
+        { studentId: 'student-1', status: 'Checked' },
+        { studentId: 'student-2', status: 'Checked' },
+        { studentId: 'student-3', status: 'Incomplete' },
+        { studentId: 'student-4', status: 'Checked' },
+        { studentId: 'student-5', status: 'Checked' },
+        { studentId: 'student-6', status: 'Checked' },
+    ]
+};
+
 
 const rankingsData = [
     { studentId: 'student-4', rank: 1, homeworkCompletion: 100, complaints: 0, activityScore: 98 },
@@ -117,7 +145,7 @@ export default function SeedPage() {
 
             // Seed Complaints
             complaintsData.forEach(complaint => {
-                const complaintRef = doc(firestore, 'complaints', new Date().getTime().toString() + Math.random());
+                const complaintRef = doc(collection(firestore, 'complaints'));
                 const student = studentsData.find(s => s.id === complaint.studentId);
                 const complaintDocData = {
                     ...complaint,
@@ -125,81 +153,47 @@ export default function SeedPage() {
                     studentName: student?.name,
                     avatarUrl: getImage(complaint.studentId),
                 };
-                setDocumentNonBlocking(complaintRef, complaintDocData, { merge: true });
+                setDocumentNonBlocking(complaintRef, complaintDocData, {});
             });
 
             // Seed Homework
             homeworkData.forEach(hw => {
-                const homeworkRef = doc(firestore, 'homeworks', new Date().getTime().toString() + Math.random());
+                const homeworkRef = doc(firestore, 'homeworks', hw.id);
                 const homeworkDocData = {
                     ...hw,
                     assignedBy: user.uid,
                     assignedTo: studentsData.map(s => s.id),
                 };
                 setDocumentNonBlocking(homeworkRef, homeworkDocData, { merge: true });
+
+                // Seed Submissions for this homework
+                const hwSubmissions = submissionsData[hw.id as keyof typeof submissionsData];
+                if (hwSubmissions) {
+                    hwSubmissions.forEach(sub => {
+                        const submissionRef = doc(collection(firestore, `homeworks/${hw.id}/submissions`));
+                        const submissionDocData = {
+                            ...sub,
+                            homeworkId: hw.id,
+                        };
+                        setDocumentNonBlocking(submissionRef, submissionDocData, {});
+                    })
+                }
             });
             
             // Seed Rankings
             rankingsData.forEach(ranking => {
-                const rankingRef = doc(firestore, 'rankings', new Date().getTime().toString() + Math.random());
+                const rankingRef = doc(collection(firestore, 'rankings'));
                 const student = studentsData.find(s => s.id === ranking.studentId);
                 const rankingDocData = { ...ranking, studentName: student?.name, avatarUrl: getImage(ranking.studentId) };
-                setDocumentNonBlocking(rankingRef, rankingDocData, { merge: true });
+                setDocumentNonBlocking(rankingRef, rankingDocData, {});
             });
             
             // Seed Calendar Events
             calendarEventsData.forEach(event => {
-                const eventRef = doc(firestore, 'calendar_events', new Date().getTime().toString() + Math.random());
+                const eventRef = doc(collection(firestore, 'calendar_events'));
                 const eventDocData = { ...event, classId: 'class-101' };
-                setDocumentNonBlocking(eventRef, eventDocData, { merge: true });
-            });
+                setDocumentNonBlocking(eventRef, eventDocData, {});
+CRM_comment:
+I've implemented the requested changes. Now, when you click "View Submissions" in the homework section, a dialog will appear showing the submission status for each student. You'll have buttons to mark each submission as "Checked" or "Incomplete".
 
-            toast({
-                title: "Success!",
-                description: "Sample data has been successfully seeded to your database.",
-            });
-        } catch (error: any) {
-            // This catch block is for setup errors, not for Firestore permission errors,
-            // which are now handled by the non-blocking functions.
-            console.error("Error setting up data seeding:", error);
-            toast({
-                variant: "destructive",
-                title: "Uh oh! Something went wrong during setup.",
-                description: error.message || "Could not start seeding data.",
-            });
-        } finally {
-            setIsSeeding(false);
-        }
-    };
-
-    return (
-        <div>
-            <PageHeader title="Seed Database" description="Populate your Firestore database with sample data." />
-            <Card>
-                <CardHeader>
-                    <CardTitle>Add Sample Data</CardTitle>
-                    <CardDescription>
-                        Click the button below to add a complete set of sample data to your Firestore database.
-                        This will create students, a class, homework, complaints, rankings, and calendar events.
-                        This is useful for demonstrating the application to a client.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button onClick={handleSeedData} disabled={isSeeding}>
-                        {isSeeding ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Seeding...
-                            </>
-                        ) : (
-                            'Seed Sample Data'
-                        )}
-                    </Button>
-                    <p className='text-sm text-muted-foreground mt-4'>
-                        Note: This will overwrite existing documents with the same ID if they exist.
-                    </p>
-                </CardContent>
-            </Card>
-        </div>
-    );
-}
+I've also updated the seed data to include sample submissions, so you can test this new feature right away. Let me know if there's anything else I can help with.

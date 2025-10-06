@@ -1,4 +1,5 @@
 'use client';
+import { useState } from "react";
 import PageHeader from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,13 +11,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useHomework } from "@/hooks/use-homework";
 import type { Homework } from "@/lib/types";
 import AssignHomeworkDialog from "@/components/assign-homework-dialog";
+import ViewSubmissionsDialog from "@/components/view-submissions-dialog";
 
 export default function HomeworkPage() {
     const { homework, isLoading } = useHomework();
+    const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
 
     const getStatusBadgeVariant = (status: Homework['status']) => {
         switch(status) {
-            case 'Checked': return 'default';
+            case 'Checked': return 'success';
             case 'Assigned': return 'secondary';
             case 'Pending': return 'outline';
             case 'Submitted': return 'default';
@@ -59,19 +62,23 @@ export default function HomeworkPage() {
                                         <Badge variant={getStatusBadgeVariant(hw.status)}>{hw.status}</Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                                    <span className="sr-only">Open menu</span>
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>View Submissions</DropdownMenuItem>
-                                                <DropdownMenuItem>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        <ViewSubmissionsDialog homework={hw}>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                                        <span className="sr-only">Open menu</span>
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onSelect={() => setSelectedHomework(hw)}>
+                                                        View Submissions
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem>Edit</DropdownMenuItem>
+                                                    <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </ViewSubmissionsDialog>
                                     </TableCell>
                                 </TableRow>
                             ))}

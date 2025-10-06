@@ -46,6 +46,14 @@ export type Homework = {
   subject: string;
 };
 
+export type Submission = {
+    id: string;
+    homeworkId: string;
+    studentId: string;
+    status: 'Pending' | 'Submitted' | 'Checked' | 'Incomplete';
+    submittedAt?: string;
+}
+
 export type CalendarEvent = {
   id: string;
   type: 'homework' | 'event' | 'holiday' | 'meeting';
@@ -62,6 +70,4 @@ export type Ranking = {
   avatarUrl: string;
   rank: number;
   homeworkCompletion: number;
-  complaints: number;
-  activityScore: number;
-};
+  compl

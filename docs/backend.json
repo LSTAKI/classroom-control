@@ -1,14 +1,14 @@
 {
   "entities": {
-    "UserProfile": {
+    "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "UserProfile",
+      "title": "User",
       "type": "object",
-      "description": "Represents a user profile in the system.",
+      "description": "Represents a user of the application (teacher, student, parent, admin).",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the UserProfile entity."
+          "description": "Unique identifier for the user."
         },
         "name": {
           "type": "string",
@@ -21,7 +21,7 @@
         },
         "role": {
           "type": "string",
-          "description": "The user's role (e.g., teacher, student, parent, admin)."
+          "description": "The user's role (teacher, student, parent, admin)."
         }
       },
       "required": [
@@ -35,19 +35,19 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Class",
       "type": "object",
-      "description": "Represents a class and its associated data.",
+      "description": "Represents a class managed by a teacher.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Class entity."
+          "description": "Unique identifier for the class."
         },
         "teacherId": {
           "type": "string",
-          "description": "Reference to Teacher. (Relationship: Teacher 1:N Class)"
+          "description": "Reference to the Teacher. (Relationship: Teacher 1:N Class)"
         },
         "studentIds": {
           "type": "array",
-          "description": "References to Students. (Relationship: Class 1:N Student)",
+          "description": "References to the Students. (Relationship: Class 1:N Student)",
           "items": {
             "type": "string"
           }
@@ -74,53 +74,23 @@
         "homeworkCompletionRate"
       ]
     },
-    "Student": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Student",
-      "type": "object",
-      "description": "Represents a student and their associated data.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Student entity."
-        },
-        "performance": {
-          "type": "number",
-          "description": "The student's overall performance score."
-        },
-        "attendanceTrend": {
-          "type": "string",
-          "description": "The student's attendance trend (e.g., improving, declining)."
-        },
-        "homeworkSubmissions": {
-          "type": "number",
-          "description": "The number of homework submissions by the student."
-        }
-      },
-      "required": [
-        "id",
-        "performance",
-        "attendanceTrend",
-        "homeworkSubmissions"
-      ]
-    },
     "Complaint": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Complaint",
       "type": "object",
-      "description": "Represents a complaint filed by a teacher or other user.",
+      "description": "Represents a complaint filed by a teacher about a student.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Complaint entity."
+          "description": "Unique identifier for the complaint."
         },
         "studentId": {
           "type": "string",
-          "description": "Reference to Student. (Relationship: Student 1:N Complaint)"
+          "description": "Reference to the Student. (Relationship: Student 1:N Complaint)"
         },
         "teacherId": {
           "type": "string",
-          "description": "Reference to Teacher. (Relationship: Teacher 1:N Complaint)"
+          "description": "Reference to the Teacher. (Relationship: Teacher 1:N Complaint)"
         },
         "reason": {
           "type": "string",
@@ -133,7 +103,7 @@
         },
         "status": {
           "type": "string",
-          "description": "The status of the complaint (e.g., open, closed, withdrawn)."
+          "description": "The status of the complaint (e.g., filed, withdrawn)."
         }
       },
       "required": [
@@ -149,11 +119,11 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Homework",
       "type": "object",
-      "description": "Represents a homework assignment.",
+      "description": "Represents a homework assignment given to students.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Homework entity."
+          "description": "Unique identifier for the homework assignment."
         },
         "title": {
           "type": "string",
@@ -169,20 +139,23 @@
           "format": "date-time"
         },
         "attachments": {
-          "type": "string",
-          "description": "Links to attachments for homework"
+          "type": "array",
+          "description": "URLs for attached files related to the assignment.",
+          "items": {
+            "type": "string"
+          }
         },
         "assignedBy": {
           "type": "string",
-          "description": "Reference to Teacher. (Relationship: Teacher 1:N Homework)"
+          "description": "Reference to the Teacher who assigned the homework. (Relationship: Teacher 1:N Homework)"
         },
         "assignedTo": {
           "type": "string",
-          "description": "Reference to Student. (Relationship: Student 1:N Homework)"
+          "description": "Reference to the Class the homework was assigned to. (Relationship: Class 1:N Homework)"
         },
         "status": {
           "type": "string",
-          "description": "The status of the homework assignment (e.g., checked, pending)."
+          "description": "The status of the homework assignment (e.g., pending, checked)."
         }
       },
       "required": [
@@ -196,44 +169,83 @@
         "status"
       ]
     },
+    "HomeworkSubmission": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "HomeworkSubmission",
+      "type": "object",
+      "description": "Represents a student's submission for a homework assignment.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the homework submission."
+        },
+        "homeworkId": {
+          "type": "string",
+          "description": "Reference to the Homework. (Relationship: Homework 1:N HomeworkSubmission)"
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to the Student. (Relationship: Student 1:N HomeworkSubmission)"
+        },
+        "submissionDate": {
+          "type": "string",
+          "description": "The date the homework was submitted.",
+          "format": "date-time"
+        },
+        "files": {
+          "type": "array",
+          "description": "URLs of the files submitted for the homework.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "homeworkId",
+        "studentId",
+        "submissionDate",
+        "files"
+      ]
+    },
     "Ranking": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Ranking",
       "type": "object",
-      "description": "Represents a student's ranking.",
+      "description": "Represents a student's ranking based on performance metrics.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Ranking entity."
+          "description": "Unique identifier for the ranking."
         },
         "studentId": {
           "type": "string",
-          "description": "Reference to Student. (Relationship: Student 1:1 Ranking)"
+          "description": "Reference to the Student. (Relationship: Student 1:N Ranking)"
         },
         "homeworkCompletion": {
           "type": "number",
-          "description": "The student's homework completion rate."
+          "description": "The student's homework completion score (50%)."
         },
-        "complaints": {
+        "complaintsScore": {
           "type": "number",
-          "description": "The number of complaints against the student."
+          "description": "The student's score based on complaints (-30%)."
         },
         "activityScore": {
           "type": "number",
-          "description": "The student's activity score."
+          "description": "The student's activity score (20%)."
         },
-        "rank": {
+        "totalScore": {
           "type": "number",
-          "description": "The student's overall rank."
+          "description": "The student's total score."
         }
       },
       "required": [
         "id",
         "studentId",
         "homeworkCompletion",
-        "complaints",
+        "complaintsScore",
         "activityScore",
-        "rank"
+        "totalScore"
       ]
     },
     "CalendarEvent": {
@@ -244,11 +256,11 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the CalendarEvent entity."
+          "description": "Unique identifier for the calendar event."
         },
         "type": {
           "type": "string",
-          "description": "The type of event (e.g., homework, event, holiday)."
+          "description": "The type of event (homework, event, holiday)."
         },
         "title": {
           "type": "string",
@@ -265,7 +277,7 @@
         },
         "classId": {
           "type": "string",
-          "description": "Reference to Class. (Relationship: Class 1:N CalendarEvent)"
+          "description": "Reference to the Class the event belongs to. (Relationship: Class 1:N CalendarEvent)"
         }
       },
       "required": [
@@ -289,15 +301,15 @@
       {
         "path": "/users/{userId}",
         "definition": {
-          "entityName": "UserProfile",
+          "entityName": "User",
           "schema": {
-            "$ref": "#/backend/entities/UserProfile"
+            "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profiles, secured by user ID. The userId parameter matches the Firebase Auth UID.",
+          "description": "Stores user profiles. Access is restricted to the user themselves and admins.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user, matching the Firebase Auth UID."
+              "description": "The unique identifier of the user."
             }
           ]
         }
@@ -309,27 +321,11 @@
           "schema": {
             "$ref": "#/backend/entities/Class"
           },
-          "description": "Stores class data, including teacherId and studentIds for access control. Teacher can create, update and delete.",
+          "description": "Stores class information. Teachers can read and update classes they manage.",
           "params": [
             {
               "name": "classId",
-              "description": "The unique identifier for the class."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/students/{studentId}",
-        "definition": {
-          "entityName": "Student",
-          "schema": {
-            "$ref": "#/backend/entities/Student"
-          },
-          "description": "Stores student data, accessible by teachers.",
-          "params": [
-            {
-              "name": "studentId",
-              "description": "The unique identifier for the student."
+              "description": "The unique identifier of the class."
             }
           ]
         }
@@ -341,11 +337,11 @@
           "schema": {
             "$ref": "#/backend/entities/Complaint"
           },
-          "description": "Stores complaints filed by teachers. Includes studentId and teacherId. Accessible to teacher, student and admin.",
+          "description": "Stores complaints filed by teachers. Teachers can only manage complaints they created. Admins have full access.",
           "params": [
             {
               "name": "complaintId",
-              "description": "The unique identifier for the complaint."
+              "description": "The unique identifier of the complaint."
             }
           ]
         }
@@ -357,11 +353,31 @@
           "schema": {
             "$ref": "#/backend/entities/Homework"
           },
-          "description": "Stores homework assignments. Accessible by teacher, student and parent.",
+          "description": "Stores homework assignments. Teachers can create and manage homework assigned to their classes.",
           "params": [
             {
               "name": "homeworkId",
-              "description": "The unique identifier for the homework assignment."
+              "description": "The unique identifier of the homework assignment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/homeworks/{homeworkId}/submissions/{submissionId}",
+        "definition": {
+          "entityName": "HomeworkSubmission",
+          "schema": {
+            "$ref": "#/backend/entities/HomeworkSubmission"
+          },
+          "description": "Stores homework submissions. Includes denormalized 'studentId' and 'teacherId' from the parent 'homework' document for authorization independence. Students can only create/update their own submissions. Teachers can read all submissions for their homework.",
+          "params": [
+            {
+              "name": "homeworkId",
+              "description": "The unique identifier of the homework assignment."
+            },
+            {
+              "name": "submissionId",
+              "description": "The unique identifier of the homework submission."
             }
           ]
         }
@@ -373,11 +389,11 @@
           "schema": {
             "$ref": "#/backend/entities/Ranking"
           },
-          "description": "Stores student rankings, updated dynamically. Accessible to teacher, student and parent.",
+          "description": "Stores student rankings.  Admins have full access.",
           "params": [
             {
               "name": "rankingId",
-              "description": "The unique identifier for the ranking."
+              "description": "The unique identifier of the ranking."
             }
           ]
         }
@@ -389,32 +405,16 @@
           "schema": {
             "$ref": "#/backend/entities/CalendarEvent"
           },
-          "description": "Stores calendar events (homework, events, holidays). ClassId is included for filtering events by class.  Accessible to teacher, student and parent.",
+          "description": "Stores calendar events. Teachers can create and manage events for their classes. Admins have full access.",
           "params": [
             {
               "name": "calendarEventId",
-              "description": "The unique identifier for the calendar event."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/roles_admin/{userId}",
-        "definition": {
-          "entityName": "RoleAdmin",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "Documents in this collection indicates user has admin role.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user, matching the Firebase Auth UID."
+              "description": "The unique identifier of the calendar event."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the Teacher Dashboard application, focusing on secure and scalable data management. The structure emphasizes authorization independence by denormalizing authorization-relevant data, specifically ownership and membership. This avoids using `get()` calls in security rules, enhancing atomicity and debuggability.\n\nThe structure uses path-based ownership for user-specific data (e.g., `/users/{userId}/...`), simplifying security rules based on the authenticated user's ID. For collaborative data like classes, the 'members' map pattern is used, with the map denormalized into subcollections where necessary to maintain authorization independence.\n\nStructural segregation ensures that each collection has a homogeneous security posture. For instance, user profiles are stored separately from class data, each with distinct security requirements.\n\nTo support QAPs (Rules Are Not Filters), the structure avoids mixing data with different access control needs in the same collection. Private data is stored under user-specific paths, while collaborative data uses membership maps for access control. Global roles are managed through dedicated collections.\n\nSpecific denormalization strategies include copying teacherId into each class document and studentIds in Complaint documents (where appropriate for querying/listing).\n\nThis design addresses the core requirements of the Teacher Dashboard, including authentication, analytics, complaint management, homework assignments, ranking, and calendar events, while adhering to the principles of authorization independence, clarity, and scalability."
+    "reasoning": "The Firestore structure is designed to address the 'Missing or insufficient permissions' error by ensuring authorization independence and proper data segregation. The error occurred when listing submissions for a specific homework, indicating a permissions issue. The structure implements the following strategies:\n\n1.  **Authorization Independence:** The `homeworkSubmissions` subcollection includes the `studentId`, and `teacherId` denormalized from the parent `homework` document and user profile, enabling rules to validate access based on the requesting user's ID without needing to perform `get()` operations. This addresses the core principle of avoiding hierarchical authorization dependencies.\n2.  **Structural Segregation:** Data with different access needs are kept in separate collections. For instance, user profiles are stored in `/users/{userId}`, ensuring that access to user data is restricted to the user themselves or authorized admins.\n3.  **Access Modeling:** Path-based ownership is used for private data like user profiles (`/users/{userId}`). Membership maps (though not explicitly used in all collections) are considered for collaborative data if the requirements evolve.\n\nThis structure directly supports secure `list` operations (QAPs) because rules can be written to validate the existence of a user and their role without filtering data based on content."
   }
 }

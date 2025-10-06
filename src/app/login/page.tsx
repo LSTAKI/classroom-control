@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,13 +10,33 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Atom } from 'lucide-react';
 
+const DEMO_EMAIL = 'teacher@school.edu';
+const DEMO_PASSWORD = 'password';
+
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(DEMO_EMAIL);
+  const [password, setPassword] = useState(DEMO_PASSWORD);
   const [isLoading, setIsLoading] = useState(false);
   const auth = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+
+  // This is a temporary solution for demo purposes to ensure the user exists.
+  useEffect(() => {
+    if (auth) {
+      createUserWithEmailAndPassword(auth, DEMO_EMAIL, DEMO_PASSWORD)
+        .then(() => {
+          console.log("Demo user created or already exists.");
+        })
+        .catch((error) => {
+          // Ignore "auth/email-already-in-use" error, as it means the user is already set up.
+          if (error.code !== 'auth/email-already-in-use') {
+            console.error("Error creating demo user:", error);
+          }
+        });
+    }
+  }, [auth]);
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

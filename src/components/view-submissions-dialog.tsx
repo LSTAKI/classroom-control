@@ -13,7 +13,7 @@ import { Button } from './ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
-import type { Homework, Submission } from '@/lib/types';
+import type { Homework, Submission, Student } from '@/lib/types';
 import { useSubmissions } from '@/hooks/use-submissions';
 import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -47,7 +47,7 @@ export default function ViewSubmissionsDialog({ homework, children }: ViewSubmis
     updateDocumentNonBlocking(submissionRef, { status });
   };
   
-  const getStudentById = (studentId: string) => {
+  const getStudentById = (studentId: string): Student | undefined => {
     return students.find(s => s.id === studentId);
   }
 

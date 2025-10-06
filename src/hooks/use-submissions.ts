@@ -9,4 +9,5 @@ export function useSubmissions(homeworkId: string) {
   const submissionsRef = useMemoFirebase(() => collection(firestore, `homeworks/${homeworkId}/submissions`), [firestore, homeworkId]);
   const { data: submissions, isLoading, error } = useCollection<Submission>(submissionsRef);
 
-  return { submissions
+  return { submissions: submissions || [], isLoading, error };
+}

@@ -153,7 +153,7 @@ export default function SeedPage() {
                     studentName: student?.name,
                     avatarUrl: getImage(complaint.studentId),
                 };
-                setDocumentNonBlocking(complaintRef, complaintDocData, {});
+                addDocumentNonBlocking(complaintRef, complaintDocData);
             });
 
             // Seed Homework
@@ -175,7 +175,7 @@ export default function SeedPage() {
                             ...sub,
                             homeworkId: hw.id,
                         };
-                        setDocumentNonBlocking(submissionRef, submissionDocData, {});
+                        addDocumentNonBlocking(submissionRef, submissionDocData);
                     })
                 }
             });
@@ -185,15 +185,57 @@ export default function SeedPage() {
                 const rankingRef = doc(collection(firestore, 'rankings'));
                 const student = studentsData.find(s => s.id === ranking.studentId);
                 const rankingDocData = { ...ranking, studentName: student?.name, avatarUrl: getImage(ranking.studentId) };
-                setDocumentNonBlocking(rankingRef, rankingDocData, {});
+                addDocumentNonBlocking(rankingRef, rankingDocData);
             });
             
             // Seed Calendar Events
             calendarEventsData.forEach(event => {
                 const eventRef = doc(collection(firestore, 'calendar_events'));
                 const eventDocData = { ...event, classId: 'class-101' };
-                setDocumentNonBlocking(eventRef, eventDocData, {});
-CRM_comment:
-I've implemented the requested changes. Now, when you click "View Submissions" in the homework section, a dialog will appear showing the submission status for each student. You'll have buttons to mark each submission as "Checked" or "Incomplete".
+                addDocumentNonBlocking(eventRef, eventDocData);
+            });
 
-I've also updated the seed data to include sample submissions, so you can test this new feature right away. Let me know if there's anything else I can help with.
+            toast({
+                title: "Success!",
+                description: "Sample data has been seeded to your database.",
+            });
+        } catch (error) {
+            console.error("Error seeding data:", error);
+            toast({
+                variant: "destructive",
+                title: "Seeding failed",
+                description: "An error occurred while seeding the database.",
+            });
+        } finally {
+            setIsSeeding(false);
+        }
+    };
+
+
+    return (
+        <div>
+            <PageHeader title="Seed Database" description="Populate your Firestore database with sample data." />
+            <Card>
+                <CardHeader>
+                    <CardTitle>Sample Data</CardTitle>
+                    <CardDescription>
+                        Click the button below to add sample students, classes, homework, and more to your project. 
+                        This will help you demonstrate the app's features.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={handleSeedData} disabled={isSeeding}>
+                        {isSeeding ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Seeding...
+                            </>
+                        ) : (
+                           "Seed Sample Data"
+                        )}
+                    </Button>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}

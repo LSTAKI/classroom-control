@@ -121,4 +121,9 @@ export default function ViewSubmissionsDialog({ homework, children }: ViewSubmis
           </Table>
         </div>
         <DialogFooter>
-          
+            <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

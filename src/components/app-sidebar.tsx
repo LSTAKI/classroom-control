@@ -19,6 +19,7 @@ import {
   Atom,
   Settings,
   LogOut,
+  Database,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/firebase';
@@ -31,6 +32,7 @@ const navItems = [
   { href: '/dashboard/complaints', label: 'Complaints', icon: MessageSquareWarning },
   { href: '/dashboard/rankings', label: 'Rankings', icon: Trophy },
   { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar },
+  { href: '/dashboard/seed', label: 'Seed Data', icon: Database },
 ];
 
 export default function AppSidebar() {

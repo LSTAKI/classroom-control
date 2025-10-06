@@ -3,12 +3,13 @@ import PageHeader from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useHomework } from "@/hooks/use-homework";
 import type { Homework } from "@/lib/types";
+import AssignHomeworkDialog from "@/components/assign-homework-dialog";
 
 export default function HomeworkPage() {
     const { homework, isLoading } = useHomework();
@@ -31,10 +32,7 @@ export default function HomeworkPage() {
         <div>
             <div className="flex justify-between items-center">
                 <PageHeader title="Homework" description="Manage and assign homework for your class." />
-                <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Assign Homework
-                </Button>
+                <AssignHomeworkDialog />
             </div>
             <Card>
                 <CardHeader>

@@ -1,17 +1,18 @@
 'use client';
 import PageHeader from "@/components/page-header";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Complaint } from "@/lib/types";
 import { useComplaints } from "@/hooks/use-complaints";
-import { doc, updateDoc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
+import { Button } from "@/components/ui/button";
+import AddComplaintDialog from "@/components/add-complaint-dialog";
 
 export default function ComplaintsPage() {
     const { complaints, isLoading } = useComplaints();
@@ -40,10 +41,7 @@ export default function ComplaintsPage() {
         <div>
             <div className="flex justify-between items-center">
                 <PageHeader title="Complaints" description="Track and manage student complaints." />
-                <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    File Complaint
-                </Button>
+                <AddComplaintDialog />
             </div>
             <Card>
                 <CardHeader>
@@ -100,5 +98,3 @@ export default function ComplaintsPage() {
         </div>
     );
 }
-
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';

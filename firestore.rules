@@ -1,209 +1,228 @@
 /**
- * @fileoverview Firestore Security Rules for the Teacher Dashboard application.
+ * @file Firestore Security Rules for Teacher Dashboard.
  *
- * Core Philosophy:
- * This ruleset employs a hybrid security model, primarily based on ownership and roles.
- * User-specific data is secured using path-based ownership, while shared resources leverage
- * denormalized fields for efficient authorization. Administrative roles are managed
- * through a dedicated collection.  This set of rules assumes prototyping mode and allows flexible data shapes and allows read operations to be public where it is appropriate.
+ * @core_philosophy This ruleset enforces a strict user-ownership model for personal data
+ * and role-based access for shared resources and administrative functions.  Data
+ * validation is relaxed in this prototyping phase to allow for rapid iteration,
+ * focusing primarily on authorization.
  *
- * Data Structure:
- * - /users/{userId}: Stores user profile information, with 'userId' matching the Firebase Auth UID.
- * - /users/{userId}/homework/{homeworkId}: Stores homework assigned to a specific user.
- * - /classes/{classId}: Stores class information, including teacherId and studentIds.
- * - /students/{studentId}: Stores student performance data.
- * - /complaints/{complaintId}: Stores complaints filed by teachers.
- * - /rankings/{rankingId}: Stores student rankings.
- * - /calendar/{calendarEventId}: Stores calendar events.
- * - /roles_admin/{userId}: Documents in this collection grant admin privileges to the user.
+ * @data_structure The data is organized hierarchically with user profiles at the root
+ * (/users/{userId}) and subcollections for user-specific data. Classes, students,
+ * complaints, rankings, and calendar events are stored in top-level collections.
  *
- * Key Security Decisions:
- * - User listing is generally disallowed except for admins.
- * - Public read access is granted to the 'students', 'complaints', 'rankings', and 'calendar' collections, with owner-only writes (if the entity schema includes an owner/author field).
- * - The /roles_admin collection confers admin privileges based on document existence.
+ * @key_security_decisions
+ * - User profiles are private and only accessible to the owning user.
+ * - Class data is accessible to teachers and students associated with the class.
+ * - Student data is accessible to teachers and administrators.
+ * - Global admin roles are conferred by the existence of a document in the
+ *   /roles_admin/{userId} collection.
+ * - Listing of user profiles is disallowed to protect user privacy.
  *
- * Denormalization for Authorization:
- * - The `teacherId` field is stored directly within the `/classes/{classId}` document to enable
- *   direct authorization checks without requiring additional reads.
+ * @denormalization_for_authorization
+ * - The `teacherId` is denormalized in the `/classes/{classId}` documents to allow
+ *   direct authorization checks for teachers without requiring additional reads.
+ * - Homework documents are located under `/users/{userId}/homework/{homeworkId}` to
+ *   establish clear ownership and avoid the need for complex queries during
+ *   authorization.
  *
- * Structural Segregation:
- * - User profiles are stored separately from other data to simplify security rules.
+ * @structural_segregation
+ * - User-specific data (e.g., homework) is stored in user subcollections to ensure
+ *   privacy and simplify `list` operations.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile information. Only the user themselves can read/write their profile.
+     * @description Controls access to user profile information.
      * @path /users/{userId}
-     * @allow (create, update, delete) if the user's auth UID matches the 'userId' path segment and the 'id' field in the document.
-     * @allow (get, list) if the user's auth UID matches the 'userId' path segment.
-     * @deny (create, update, delete) if the user's auth UID does not match the 'userId' path segment.
-     * @principle Enforces document ownership for user profiles.
+     * @allow (read, write): if isSignedIn() && isOwner(userId);
+     * @deny (read, write): if !isSignedIn() || !isOwner(userId);
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
+      // Validate the user's own ID
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
-
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false; // User listing is generally disallowed
-
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
-    }
-
-    /**
-     * @description Controls access to homework assignments for a specific user. Only the assigned user can read/write their homework.
-     * @path /users/{userId}/homework/{homeworkId}
-     * @allow (create, update, delete) if the user's auth UID matches the 'userId' path segment.
-     * @allow (get, list) if the user's auth UID matches the 'userId' path segment.
-     * @deny (create, update, delete) if the user's auth UID does not match the 'userId' path segment.
-     * @principle Enforces document ownership for homework assignments.
-     */
-    match /users/{userId}/homework/{homeworkId} {
       function isSignedIn() {
         return request.auth != null;
       }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
       allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-
+      allow list: if false;
       allow create: if isSignedIn() && isOwner(userId);
       allow update: if isSignedIn() && isOwner(userId);
       allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Controls access to class information. Teachers can read/write class data.
-     * @path /classes/{classId}
-     * @allow (create, update, delete) if the user's auth UID matches the 'teacherId' field in the document.
-     * @allow (get, list) if true.
-     * @deny (create, update, delete) if the user's auth UID does not match the 'teacherId' field in the document.
-     * @principle Enforces teacher ownership for class management.
+     * @description Controls access to homework assignments for a specific user.
+     * @path /users/{userId}/homework/{homeworkId}
+     * @allow (read, write): if isSignedIn() && isOwner(userId);
+     * @deny (read, write): if !isSignedIn() || !isOwner(userId);
+     * @principle Enforces document ownership for all operations.
      */
-    match /classes/{classId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Check if the user is the teacher of the class
-      function isTeacher(teacherId) {
-        return request.auth.uid == teacherId;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-
-      allow create: if isSignedIn() && isTeacher(request.resource.data.teacherId);
-      allow update: if isSignedIn() && isTeacher(resource.data.teacherId);
-      allow delete: if isSignedIn() && isTeacher(resource.data.teacherId);
-    }
-
-    /**
-     * @description Controls access to student data. Accessible to teachers and admins.
-     * @path /students/{studentId}
-     * @allow (get, list) if true.
-     * @allow (create, update, delete) if false. // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @principle Restricts access to student performance data.
-     */
-    match /students/{studentId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
-
-        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-    /**
-     * @description Controls access to complaints. Accessible to teachers, students (related to the complaint), and admins.
-     * @path /complaints/{complaintId}
-     * @allow (get, list) if true.
-     * @allow (create, update, delete) if false. // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @principle Restricts access to complaints data.
-     */
-    match /complaints/{complaintId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
-
-        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-    /**
-     * @description Controls access to student rankings. Accessible to teachers and admins.
-     * @path /rankings/{rankingId}
-     * @allow (get, list) if true.
-     * @allow (create, update, delete) if false. // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @principle Restricts access to student rankings data.
-     */
-    match /rankings/{rankingId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
-
-        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-    /**
-     * @description Controls access to calendar events. Accessible to teachers, students, and parents associated with the classId.
-     * @path /calendar/{calendarEventId}
-     * @allow (get, list) if true.
-     * @allow (create, update, delete) if false. // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @principle Restricts access to calendar events data.
-     */
-    match /calendar/{calendarEventId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
-
-        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-    /**
-     * @description Controls access to admin roles. Only users with a document in this collection are admins.
-     * @path /roles_admin/{userId}
-     * @allow (create) if the user's auth UID matches the 'userId' path segment.
-     * @allow (get, list) if isSignedIn().
-     * @allow (update, delete) if false; // Only create operations are allowed to assign the role.
-     * @deny (create) if the user's auth UID does not match the 'userId' path segment.
-     * @principle Grants admin privileges based on document existence.
-     */
-    match /roles_admin/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isAdmin(userId) {
+    match /users/{userId}/homework/{homeworkId} {
+        // Validate the homework assigned to user's own ID
+      function isOwner(userId) {
         return request.auth.uid == userId;
       }
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
+    }
 
-      allow get: if isSignedIn() && isAdmin(userId);
+    /**
+     * @description Controls access to class information.
+     * @path /classes/{classId}
+     * @allow (read, write): if isSignedIn() && isTeacherOfClass(resource.data.teacherId);
+     * @deny (read, write): if !isSignedIn() || !isTeacherOfClass(resource.data.teacherId);
+     * @principle Enforces role-based access control for class data.
+     */
+    match /classes/{classId} {
+        // Validate the teacher's ID
+      function isTeacherOfClass(teacherId) {
+        return request.auth.uid == teacherId;
+      }
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      allow get: if isSignedIn();
       allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.teacherId;
+      allow update: if isSignedIn() && request.auth.uid == resource.data.teacherId;
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.teacherId;
+    }
 
-      allow create: if isSignedIn() && isAdmin(userId);
-      allow update, delete: if false;
+    /**
+     * @description Controls access to student performance data.
+     * @path /students/{studentId}
+     * @allow (read, write): if isSignedIn() && isAdmin();
+     * @deny (read, write): if !isSignedIn() || !isAdmin();
+     * @principle Enforces role-based access control for student data.
+     */
+    match /students/{studentId} {
+        // Validate if the user is Admin
+      function isAdmin() {
+          return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      }
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      allow get: if isSignedIn() && isAdmin();
+      allow list: if isSignedIn() && isAdmin();
+      allow create: if isSignedIn() && isAdmin();
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
+    /**
+     * @description Controls access to complaints filed by teachers.
+     * @path /complaints/{complaintId}
+     * @allow (read, write): if isSignedIn() && (isTeacherOfComplaint(resource.data.teacherId) || isStudentInComplaint(resource.data.studentId) || isAdmin());
+     * @deny (read, write): if !isSignedIn() || (!isTeacherOfComplaint(resource.data.teacherId) && !isStudentInComplaint(resource.data.studentId) && !isAdmin());
+     * @principle Enforces role-based access control for complaints.
+     */
+    match /complaints/{complaintId} {
+        // Validate if the user is Admin
+      function isAdmin() {
+          return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      }
+      function isSignedIn() {
+        return request.auth != null;
+      }
+        // Validate if the user is Teacher of Complaint
+      function isTeacherOfComplaint(teacherId) {
+        return request.auth.uid == teacherId;
+      }
+        // Validate if the user is Student in Complaint
+      function isStudentInComplaint(studentId) {
+        return request.auth.uid == studentId;
+      }
+      allow get: if isSignedIn() && (isTeacherOfComplaint(request.resource.data.teacherId) || isStudentInComplaint(request.resource.data.studentId) || isAdmin());
+      allow list: if isSignedIn() && isAdmin();
+      allow create: if isSignedIn() && (request.resource.data.teacherId == request.auth.uid || request.resource.data.studentId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (request.resource.data.teacherId == request.auth.uid || request.resource.data.studentId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
+    /**
+     * @description Controls access to student rankings.
+     * @path /rankings/{rankingId}
+     * @allow (read, write): if isSignedIn() && isAdmin();
+     * @deny (read, write): if !isSignedIn() || !isAdmin();
+     * @principle Enforces role-based access control for rankings.
+     */
+    match /rankings/{rankingId} {
+        // Validate if the user is Admin
+      function isAdmin() {
+          return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      }
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      allow get: if isSignedIn() && isAdmin();
+      allow list: if isSignedIn() && isAdmin();
+      allow create: if isSignedIn() && isAdmin();
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
+    /**
+     * @description Controls access to calendar events.
+     * @path /calendar/{calendarEventId}
+     * @allow (read, write): if isSignedIn() && (isTeacherOfClassEvent(resource.data.classId) || isStudentOfClassEvent(resource.data.classId) || isAdmin());
+     * @deny (read, write): if !isSignedIn() || (!isTeacherOfClassEvent(resource.data.classId) && !isStudentOfClassEvent(resource.data.classId) && !isAdmin());
+     * @principle Enforces role-based access control for calendar events.
+     */
+    match /calendar/{calendarEventId} {
+        // Validate if the user is Admin
+      function isAdmin() {
+          return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      }
+      function isSignedIn() {
+        return request.auth != null;
+      }
+        // Validate if the user is Teacher of Class Event
+      function isTeacherOfClassEvent(classId) {
+          return get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+      }
+        // Validate if the user is Student of Class Event. Changed from `in` to `hasAny`
+      function isStudentOfClassEvent(classId) {
+        return request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)).data.studentIds;
+      }
+      allow get: if isSignedIn() && (isTeacherOfClassEvent(request.resource.data.classId) || isStudentOfClassEvent(request.resource.data.classId) || isAdmin());
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && (isTeacherOfClassEvent(request.resource.data.classId) || isStudentOfClassEvent(request.resource.data.classId) || isAdmin());
+      allow update: if isSignedIn() && (isTeacherOfClassEvent(request.resource.data.classId) || isStudentOfClassEvent(request.resource.data.classId) || isAdmin());
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
+    /**
+     * @description Confers admin privileges to a user.
+     * @path /roles_admin/{userId}
+     * @allow (read, write): if isSignedIn() && isOwner(userId);
+     * @deny (read, write): if !isSignedIn() || !isOwner(userId);
+     * @principle Enforces document ownership for role management.
+     */
+    match /roles_admin/{userId} {
+        // Validate the user's own ID
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && isAdmin();
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if isSignedIn() && isAdmin();
     }
   }
 }

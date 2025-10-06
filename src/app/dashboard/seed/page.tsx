@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useFirestore, useUser, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { collection, writeBatch, doc } from 'firebase/firestore';
+import { useFirestore, useUser, setDocumentNonBlocking } from '@/firebase';
+import { doc }from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import PageHeader from '@/components/page-header';
@@ -87,80 +87,85 @@ export default function SeedPage() {
         });
 
         try {
-            const batch = writeBatch(firestore);
-
             // Seed Students
             studentsData.forEach(student => {
                 const studentRef = doc(firestore, 'students', student.id);
-                batch.set(studentRef, { ...student, avatarUrl: getImage(student.id) });
+                const studentDocData = { ...student, avatarUrl: getImage(student.id) };
+                setDocumentNonBlocking(studentRef, studentDocData, { merge: true });
+
                 const userRef = doc(firestore, 'users', student.id);
-                batch.set(userRef, {
+                const userDocData = {
                     id: student.id,
                     name: student.name,
                     email: student.email,
                     role: student.role,
                     avatarUrl: getImage(student.id),
-                });
+                };
+                setDocumentNonBlocking(userRef, userDocData, { merge: true });
             });
 
             // Seed Class
             const classDocData = { ...classData, teacherId: user.uid };
             const classRef = doc(firestore, 'classes', classDocData.id);
-            batch.set(classRef, classDocData);
+            setDocumentNonBlocking(classRef, classDocData, { merge: true });
             
             // Seed Teacher (User)
             const teacherRef = doc(firestore, 'users', user.uid);
-            batch.set(teacherRef, { ...teacherData, id: user.uid, avatarUrl: getImage('teacher-avatar') });
+            const teacherDocData = { ...teacherData, id: user.uid, avatarUrl: getImage('teacher-avatar') };
+            setDocumentNonBlocking(teacherRef, teacherDocData, { merge: true });
 
 
             // Seed Complaints
             complaintsData.forEach(complaint => {
-                const complaintRef = doc(collection(firestore, 'complaints'));
+                const complaintRef = doc(firestore, 'complaints', new Date().getTime().toString() + Math.random());
                 const student = studentsData.find(s => s.id === complaint.studentId);
-                batch.set(complaintRef, {
+                const complaintDocData = {
                     ...complaint,
                     teacherId: user.uid,
                     studentName: student?.name,
                     avatarUrl: getImage(complaint.studentId),
-                });
+                };
+                setDocumentNonBlocking(complaintRef, complaintDocData, { merge: true });
             });
 
             // Seed Homework
             homeworkData.forEach(hw => {
-                const homeworkRef = doc(collection(firestore, 'homeworks'));
-                batch.set(homeworkRef, {
+                const homeworkRef = doc(firestore, 'homeworks', new Date().getTime().toString() + Math.random());
+                const homeworkDocData = {
                     ...hw,
                     assignedBy: user.uid,
                     assignedTo: studentsData.map(s => s.id),
-                });
+                };
+                setDocumentNonBlocking(homeworkRef, homeworkDocData, { merge: true });
             });
             
             // Seed Rankings
             rankingsData.forEach(ranking => {
-                const rankingRef = doc(collection(firestore, 'rankings'));
+                const rankingRef = doc(firestore, 'rankings', new Date().getTime().toString() + Math.random());
                 const student = studentsData.find(s => s.id === ranking.studentId);
-                batch.set(rankingRef, { ...ranking, studentName: student?.name, avatarUrl: getImage(ranking.studentId) });
+                const rankingDocData = { ...ranking, studentName: student?.name, avatarUrl: getImage(ranking.studentId) };
+                setDocumentNonBlocking(rankingRef, rankingDocData, { merge: true });
             });
             
             // Seed Calendar Events
             calendarEventsData.forEach(event => {
-                const eventRef = doc(collection(firestore, 'calendar_events'));
-                batch.set(eventRef, { ...event, classId: 'class-101' });
+                const eventRef = doc(firestore, 'calendar_events', new Date().getTime().toString() + Math.random());
+                const eventDocData = { ...event, classId: 'class-101' };
+                setDocumentNonBlocking(eventRef, eventDocData, { merge: true });
             });
-
-
-            await batch.commit();
 
             toast({
                 title: "Success!",
                 description: "Sample data has been successfully seeded to your database.",
             });
         } catch (error: any) {
-            console.error("Error seeding data:", error);
+            // This catch block is for setup errors, not for Firestore permission errors,
+            // which are now handled by the non-blocking functions.
+            console.error("Error setting up data seeding:", error);
             toast({
                 variant: "destructive",
-                title: "Uh oh! Something went wrong.",
-                description: error.message || "Could not seed data.",
+                title: "Uh oh! Something went wrong during setup.",
+                description: error.message || "Could not start seeding data.",
             });
         } finally {
             setIsSeeding(false);

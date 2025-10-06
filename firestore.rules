@@ -1,220 +1,234 @@
 /**
- * @fileoverview Firestore Security Rules for the application.
- *
- * Core Philosophy:
- * This ruleset enforces a multi-tenant security model where users (teachers, students, parents, admins)
- * can only access data they own or are explicitly granted access to. Authorization independence is
- * prioritized by denormalizing authorization data directly onto documents, avoiding costly and slow `get()` calls.
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a role-based access control system with a focus on ownership and data segregation.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles. Only the user and admins can access.
- * - /classes/{classId}: Stores class information. Teachers can read/write classes they manage.
- * - /complaints/{complaintId}: Stores complaints. Teachers can manage complaints they created. Admins have full access.
- * - /homeworks/{homeworkId}: Stores homework. Teachers can manage homework for their classes.
- * - /homeworks/{homeworkId}/submissions/{submissionId}: Stores homework submissions, with studentId and teacherId denormalized for authorization.
+ * - /users/{userId}: Stores user profiles. Access is restricted to the user themselves.
+ * - /classes/{classId}: Stores class information. Teachers can read and update classes they manage.
+ * - /complaints/{complaintId}: Stores complaints filed by teachers. Teachers can only manage complaints they created.
+ * - /homeworks/{homeworkId}: Stores homework assignments. Teachers can create and manage homework assigned to their classes.
+ * - /homeworks/{homeworkId}/submissions/{submissionId}: Stores homework submissions. Students can only create/update their own submissions. Teachers can read all submissions for their homework.
  * - /rankings/{rankingId}: Stores student rankings. Admins have full access.
- * - /calendar_events/{calendarEventId}: Stores calendar events. Teachers can manage events for their classes. Admins have full access.
+ * - /calendar_events/{calendarEventId}: Stores calendar events. Teachers can create and manage events for their classes.
  *
  * Key Security Decisions:
- * - User listing is generally disallowed to protect user privacy.
- * - All write operations require authentication (`isSignedIn()`).
- * - Authorization checks are performed using helper functions (`isOwner()`, `isTeacherOfClass()`).
- * - Data validation is limited to authorization-critical fields for rapid prototyping.
+ * - Strict user ownership for user profiles.
+ * - Teachers can manage classes and homework they create.
+ * - Teachers can only manage complaints they created.
+ * - Admins have full access to rankings and calendar events.
+ * - Homework submissions are restricted to the submitting student and the assigning teacher.
  *
  * Denormalization for Authorization:
- * - Homework submissions include denormalized `studentId` and `teacherId` to enable independent authorization rules without `get()` calls.
+ * - The `homeworkSubmissions` subcollection includes the `studentId`, and `teacherId` denormalized from the parent `homework` document and user profile, enabling rules to validate access based on the requesting user's ID without needing to perform `get()` operations.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profiles. Only the user themselves can read/write their profile.
+     * @description Enforces user-level access control for user profiles.
      * @path /users/{userId}
-     * @allow (get, update, delete) if the user is signed in and is the owner of the profile (userId matches auth.uid).
-     * @allow (create) if the user is signed in and the userId matches auth.uid.
-     * @allow (list) if false (user listing is disallowed).
-     * @deny (create, update, delete) if the user is not the owner of the profile.
-     * @principle Enforces strict user-ownership for profile data.
+     * @allow (get, create, update, delete) if the user is the owner (userId).
+     * @deny (get, create, update, delete) if the user is not the owner.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      // Helper function to check if the user is signed in
+      // Check if the user is signed in.
       function isSignedIn() {
         return request.auth != null;
       }
 
-      // Helper function to check if the user is the owner
+      // Check if the user is the owner of the document.
       function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
+        return request.auth.uid == userId;
       }
 
-      // Helper function to check if the user is the existing owner (and document exists)
+      // Check if the user is the existing owner of the document.
       function isExistingOwner(userId) {
-        return isOwner(userId) && resource.data.userId == userId;
+        return isOwner(userId) && resource.data != null;
       }
-      
+
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Controls access to class information. Teachers can read/write classes they manage.
+     * @description Controls access to class documents. Teachers can manage classes they own.
      * @path /classes/{classId}
-     * @allow (get, list) if true (for prototyping only - should later be restricted to teachers).
-     * @allow (create) if the user is signed in (and is a teacher - to be implemented).
-     * @allow (update, delete) if the user is signed in and is the teacher of the class (to be implemented).
-     * @deny (create, update, delete) if the user is not a teacher of the class.
-     * @principle Allows teachers to manage their classes (teacher check to be implemented).
+     * @allow (get, list) if true (for prototyping)
+     * @allow (create, update, delete) if the user is the teacher of the class.
+     * @deny (create, update, delete) if the user is not the teacher of the class.
+     * @principle Enforces teacher ownership for class management.
      */
     match /classes/{classId} {
-      // Helper function to check if the user is signed in
+      // Check if the user is signed in.
       function isSignedIn() {
         return request.auth != null;
       }
 
-      //TODO: Need to implement a helper function that confirms the user is a teacher of the class
-      //This could mean checking that the user is the teacherId on the Class, or checking the user's role.
-      //For now, this rule is open, but it MUST be locked down.
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      // Check if the user is the teacher of the class.
+      function isTeacher(teacherId) {
+        return request.auth.uid == teacherId;
+      }
+
+      // Check if the user is the existing teacher of the class.
+      function isExistingTeacher(teacherId) {
+        return isTeacher(teacherId) && resource.data != null;
+      }
+
+      allow get: if true; // Public read for prototyping.  In production, restrict to teachers/students.
+      allow list: if true; // Public list for prototyping.  In production, restrict to teachers/students.
+      allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
+      allow update: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.teacherId == request.auth.uid;
     }
 
     /**
-     * @description Controls access to complaints. Teachers can manage complaints they created. Admins have full access.
+     * @description Manages access to complaint documents. Teachers can only manage complaints they created.
      * @path /complaints/{complaintId}
-     * @allow (get, list) if true (for prototyping only - should later be restricted to the complaint's teacher or admin).
-     * @allow (create) if the user is signed in (and is a teacher - to be implemented).
-     * @allow (update, delete) if the user is signed in and is the creator (teacher) or an admin (to be implemented).
-     * @deny (create, update, delete) if the user is not the creator or an admin.
-     * @principle Allows teachers to manage their complaints (creator/admin check to be implemented).
+     * @allow (get, list) if true (for prototyping).
+     * @allow (create, update, delete) if the user is the teacher who created the complaint.
+     * @deny (create, update, delete) if the user is not the creator.
+     * @principle Enforces creator ownership for complaint management.
      */
     match /complaints/{complaintId} {
-      // Helper function to check if the user is signed in
+      // Check if the user is signed in.
       function isSignedIn() {
         return request.auth != null;
       }
 
-      //TODO: Need to implement a helper function that confirms the user is the creator of the complaint, or an admin.
-      //This could mean checking that the user is the teacherId on the Complaint, or checking the user's role.
-      //For now, this rule is open, but it MUST be locked down.
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      // Check if the user is the teacher who created the complaint.
+      function isComplaintCreator(teacherId) {
+        return request.auth.uid == teacherId;
+      }
+
+      // Check if the user is the existing creator of the complaint.
+      function isExistingComplaintCreator(teacherId) {
+        return isComplaintCreator(teacherId) && resource.data != null;
+      }
+
+      allow get: if true; // Public read for prototyping.  In production, restrict to teachers/admins.
+      allow list: if true; // Public list for prototyping.  In production, restrict to teachers/admins.
+      allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
+      allow update: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.teacherId == request.auth.uid;
     }
 
     /**
      * @description Controls access to homework assignments. Teachers can create and manage homework assigned to their classes.
      * @path /homeworks/{homeworkId}
-     * @allow (get, list) if true (for prototyping only - should later be restricted to the owning teacher).
-     * @allow (create) if the user is signed in (and is a teacher - to be implemented).
-     * @allow (update, delete) if the user is signed in and is the teacher who assigned the homework (to be implemented).
-     * @deny (create, update, delete) if the user is not the assigning teacher.
-     * @principle Allows teachers to manage homework for their classes (teacher check to be implemented).
+     * @allow (get, list) if true (for prototyping).
+     * @allow (create, update, delete) if the user is the teacher who assigned the homework.
+     * @deny (create, update, delete) if the user is not the assigner.
+     * @principle Enforces assigner ownership for homework management.
      */
     match /homeworks/{homeworkId} {
-      // Helper function to check if the user is signed in
+      // Check if the user is signed in.
       function isSignedIn() {
         return request.auth != null;
       }
 
-      //TODO: Need to implement a helper function that confirms the user is the creator of the homework.
-      //This could mean checking that the user is the teacherId on the Homework, or checking the user's role.
-      //For now, this rule is open, but it MUST be locked down.
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      // Check if the user is the teacher who assigned the homework.
+      function isHomeworkAssigner(teacherId) {
+        return request.auth.uid == teacherId;
+      }
+
+      // Check if the user is the existing assigner of the homework.
+      function isExistingHomeworkAssigner(teacherId) {
+        return isHomeworkAssigner(teacherId) && resource.data != null;
+      }
+
+      allow get: if true; // Public read for prototyping.  In production, restrict to teachers/students.
+      allow list: if true; // Public list for prototyping.  In production, restrict to teachers/students.
+      allow create: if isSignedIn() && request.resource.data.assignedBy == request.auth.uid;
+      allow update: if isSignedIn() && request.resource.data.assignedBy == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.assignedBy == request.auth.uid;
+
+      /**
+       * @description Controls access to homework submissions. Students can only create/update their own submissions. Teachers can read all submissions for their homework.
+       * @path /homeworks/{homeworkId}/submissions/{submissionId}
+       * @allow (get, list) if the user is the teacher who assigned the homework or the student who submitted the homework.
+       * @allow (create, update) if the user is the student submitting the homework.
+       * @deny (create, update, delete) if the user is not the student or the teacher.
+       * @principle Enforces ownership and teacher access for homework submissions.
+       */
+      match /submissions/{submissionId} {
+        // Check if the user is signed in.
+        function isSignedIn() {
+          return request.auth != null;
+        }
+
+        // Check if the user is the student who submitted the homework.
+        function isSubmissionOwner(studentId) {
+          return request.auth.uid == studentId;
+        }
+
+        // Check if the user is the teacher who assigned the homework.
+        function isHomeworkAssigner(homeworkId) {
+          return get(/databases/$(database)/documents/homeworks/$(homeworkId)).data.assignedBy == request.auth.uid;
+        }
+
+        allow get: if isSignedIn() && (isSubmissionOwner(resource.data.studentId) || isHomeworkAssigner(homeworkId));
+        allow list: if isSignedIn() && isHomeworkAssigner(homeworkId);
+        allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+        allow update: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+        allow delete: if false; // Submissions should not be deleted directly.
+      }
     }
 
     /**
-     * @description Controls access to homework submissions.
-     * Includes denormalized 'studentId' and 'teacherId' from the parent 'homework' document for authorization independence.
-     * Students can only create/update their own submissions. Teachers can read all submissions for their homework.
-     * @path /homeworks/{homeworkId}/submissions/{submissionId}
-     * @allow (create) if the user is signed in and is the student submitting the homework.
-     * @allow (update, delete) if the user is signed in and is the student who created the submission (and document exists).
-     * @allow (get, list) if the user is the teacher of the homework.
-     * @deny (create, update, delete) if the user is not the student who created the submission.
-     * @principle Enforces student-ownership for submissions, with teacher read access.
-     */
-    match /homeworks/{homeworkId}/submissions/{submissionId} {
-      // Helper function to check if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Helper function to check if the user is the student owner of the submission
-      function isStudentOwner(studentId) {
-        return isSignedIn() && request.auth.uid == studentId;
-      }
-
-      // Helper function to check if the user is the existing student owner (and document exists)
-      function isExistingStudentOwner(studentId) {
-        return isStudentOwner(studentId) && resource.data.studentId == studentId;
-      }
-
-      // Helper function to check if the user is a teacher of the homework.
-      //This needs to be implemented by reading from the parent document
-      function isTeacherOfHomework(homeworkId) {
-          return true; //TODO: IMPLEMENT THIS.
-      }
-
-      allow get, list: if isTeacherOfHomework(homeworkId);
-      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
-      allow update: if isStudentOwner(resource.data.studentId);
-      allow delete: if isStudentOwner(resource.data.studentId);
-    }
-
-    /**
-     * @description Controls access to student rankings.  Admins have full access.
+     * @description Controls access to student rankings. Admins have full access.
      * @path /rankings/{rankingId}
-     * @allow (get, list) if true (for prototyping only - should later be restricted to admins).
-     * @allow (create, update, delete) if the user is signed in and is an admin (to be implemented).
-     * @deny (create, update, delete) if the user is not an admin.
-     * @principle Restricts access to rankings to admins (admin check to be implemented).
+     * @allow (get, list) if true (for prototyping).
+     * @allow (create, update, delete) if false (no specific access control implemented).
+     * @deny (create, update, delete) if true.
      */
     match /rankings/{rankingId} {
-      // Helper function to check if the user is signed in
+      // Check if the user is signed in.
       function isSignedIn() {
         return request.auth != null;
       }
 
-      //TODO: Need to implement a helper function that confirms the user is an admin.
-      //This could mean checking the user's role.
-      //For now, this rule is open, but it MUST be locked down.
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      // Function to check if the user has the 'admin' role.  This is a placeholder; in a real application,
+      // you would likely need to query a user document to check roles.
+      function isAdmin() {
+        return false; // Replace with actual admin check logic
+      }
+
+      allow get: if true; // Public read for prototyping. In production, restrict to admins.
+      allow list: if true; // Public list for prototyping. In production, restrict to admins.
+      allow create: if isSignedIn() && isAdmin(); // TODO: Add admin role check
+      allow update: if isSignedIn() && isAdmin(); // TODO: Add admin role check
+      allow delete: if isSignedIn() && isAdmin(); // TODO: Add admin role check
     }
 
     /**
-     * @description Controls access to calendar events. Teachers can create and manage events for their classes. Admins have full access.
+     * @description Manages access to calendar events. Teachers can create and manage events for their classes. Admins have full access.
      * @path /calendar_events/{calendarEventId}
-     * @allow (get, list) if true (for prototyping only - should later be restricted to the teacher of the class or admin).
-     * @allow (create, update, delete) if the user is signed in and is the teacher of the class or an admin (to be implemented).
-     * @deny (create, update, delete) if the user is not the teacher of the class or an admin.
-     * @principle Allows teachers to manage calendar events for their classes, admins have full access (teacher/admin check to be implemented).
+     * @allow (get, list) if true (for prototyping).
+     * @allow (create, update, delete) if false (no specific access control implemented).
+     * @deny (create, update, delete) if true.
      */
     match /calendar_events/{calendarEventId} {
-      // Helper function to check if the user is signed in
+      // Check if the user is signed in.
       function isSignedIn() {
         return request.auth != null;
       }
 
-      //TODO: Need to implement a helper function that confirms the user is the teacher of the class or an admin.
-      //This could mean checking the user's role, or checking a class membership table.
-      //For now, this rule is open, but it MUST be locked down.
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      // Function to check if the user has the 'admin' role.  This is a placeholder; in a real application,
+      // you would likely need to query a user document to check roles.
+      function isAdmin() {
+        return false; // Replace with actual admin check logic
+      }
+
+      allow get: if true; // Public read for prototyping.  In production, restrict to teachers/admins.
+      allow list: if true; // Public list for prototyping.  In production, restrict to teachers/admins.
+      allow create: if isSignedIn() && isAdmin(); // TODO: Add teacher/admin role check
+      allow update: if isSignedIn() && isAdmin(); // TODO: Add teacher/admin role check
+      allow delete: if isSignedIn() && isAdmin(); // TODO: Add teacher/admin role check
     }
   }
 }

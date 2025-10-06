@@ -16,6 +16,7 @@ import ViewSubmissionsDialog from "@/components/view-submissions-dialog";
 export default function HomeworkPage() {
     const { homework, isLoading } = useHomework();
     const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
+    const [isSubmissionsDialogOpen, setIsSubmissionsDialogOpen] = useState(false);
 
     const getStatusBadgeVariant = (status: Homework['status']) => {
         switch(status) {
@@ -62,23 +63,24 @@ export default function HomeworkPage() {
                                         <Badge variant={getStatusBadgeVariant(hw.status)}>{hw.status}</Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <ViewSubmissionsDialog homework={hw}>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                                        <span className="sr-only">Open menu</span>
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => setSelectedHomework(hw)}>
-                                                        View Submissions
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem>Edit</DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </ViewSubmissionsDialog>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <span className="sr-only">Open menu</span>
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onSelect={() => {
+                                                    setSelectedHomework(hw);
+                                                    setIsSubmissionsDialogOpen(true);
+                                                }}>
+                                                    View Submissions
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem>Edit</DropdownMenuItem>
+                                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -86,6 +88,14 @@ export default function HomeworkPage() {
                     </Table>
                 </CardContent>
             </Card>
+
+            <ViewSubmissionsDialog
+                isOpen={isSubmissionsDialogOpen}
+                onOpenChange={setIsSubmissionsDialogOpen}
+                homework={selectedHomework}
+            >
+                {/* The trigger is in the dropdown, so this is just for the Dialog to exist */}
+            </ViewSubmissionsDialog>
         </div>
     );
 }

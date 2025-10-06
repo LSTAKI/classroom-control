@@ -1,14 +1,17 @@
+'use client';
 import PageHeader from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MOCK_HOMEWORK } from "@/lib/mock-data";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useHomework } from "@/hooks/use-homework";
+import type { Homework } from "@/lib/types";
 
 export default function HomeworkPage() {
+    const { homework, isLoading } = useHomework();
 
     const getStatusBadgeVariant = (status: Homework['status']) => {
         switch(status) {
@@ -18,6 +21,10 @@ export default function HomeworkPage() {
             case 'Submitted': return 'default';
             default: return 'secondary';
         }
+    }
+
+    if (isLoading) {
+        return <div>Loading...</div>
     }
 
     return (
@@ -45,7 +52,7 @@ export default function HomeworkPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {MOCK_HOMEWORK.map(hw => (
+                            {homework.map(hw => (
                                 <TableRow key={hw.id}>
                                     <TableCell className="font-medium">{hw.title}</TableCell>
                                     <TableCell>{hw.subject}</TableCell>

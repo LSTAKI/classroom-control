@@ -1,18 +1,13 @@
 'use client';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { MOCK_STUDENTS } from '@/lib/mock-data';
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
-
-const performanceData = MOCK_STUDENTS.map(student => ({
-    name: student.name.split(' ')[0],
-    avgMarks: parseFloat((student.marks.reduce((acc, mark) => acc + mark.score, 0) / student.marks.length).toFixed(1)),
-}));
+import type { Student } from '@/lib/types';
 
 const chartConfig = {
     avgMarks: {
@@ -21,7 +16,16 @@ const chartConfig = {
     },
 } satisfies ChartConfig;
 
-export default function StudentPerformanceChart() {
+interface StudentPerformanceChartProps {
+    students: Student[];
+}
+
+export default function StudentPerformanceChart({ students }: StudentPerformanceChartProps) {
+    const performanceData = students.map(student => ({
+        name: student.name.split(' ')[0],
+        avgMarks: student.marks && student.marks.length > 0 ? parseFloat((student.marks.reduce((acc, mark) => acc + mark.score, 0) / student.marks.length).toFixed(1)) : 0,
+    }));
+
   return (
     <Card>
       <CardHeader>

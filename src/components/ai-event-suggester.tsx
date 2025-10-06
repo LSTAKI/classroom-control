@@ -12,7 +12,7 @@ import {
   DialogFooter,
 } from './ui/dialog';
 import type { CalendarEvent } from '@/lib/types';
-import { MOCK_HOMEWORK } from '@/lib/mock-data';
+import { useHomework } from '@/hooks/use-homework';
 import { format } from 'date-fns';
 
 interface AiEventSuggesterProps {
@@ -23,6 +23,7 @@ export default function AiEventSuggester({ events }: AiEventSuggesterProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [suggestion, setSuggestion] = useState('');
   const [isPending, startTransition] = useTransition();
+  const { homework } = useHomework();
 
   const handleSuggestion = () => {
     startTransition(async () => {
@@ -30,7 +31,7 @@ export default function AiEventSuggester({ events }: AiEventSuggesterProps) {
       const classSchedule = 'Mon/Wed/Fri 10-11 AM: Grade 10 Math. Tue/Thu 1-2 PM: Grade 10 Science.';
       const curriculum = 'Math: Algebra II, Geometry. Science: Biology, Chemistry basics.';
       const existingEvents = events.map(e => `${e.title} on ${e.date}`).join(', ');
-      const homeworkDeadlines = MOCK_HOMEWORK
+      const homeworkDeadlines = homework
         .filter(hw => new Date(hw.dueDate) > new Date())
         .map(hw => `${hw.title} due on ${format(new Date(hw.dueDate), 'PPP')}`)
         .join(', ');

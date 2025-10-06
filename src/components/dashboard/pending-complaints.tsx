@@ -1,13 +1,20 @@
+'use client';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { MOCK_COMPLAINTS } from "@/lib/mock-data";
 import { MessageSquareWarning, ArrowRight } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { useComplaints } from "@/hooks/use-complaints";
 
 export default function PendingComplaints() {
-    const pendingComplaints = MOCK_COMPLAINTS
+    const { complaints, isLoading } = useComplaints();
+
+    if (isLoading) {
+        return <Card>Loading complaints...</Card>
+    }
+    
+    const pendingComplaints = complaints
         .filter(c => c.status === 'Pending')
         .slice(0, 3);
     
@@ -22,7 +29,7 @@ export default function PendingComplaints() {
             <CardContent>
                 <div className="space-y-4">
                     {pendingComplaints.length > 0 ? pendingComplaints.map(complaint => (
-                        <div key={complaint.complaintId} className="flex items-center gap-4">
+                        <div key={complaint.id} className="flex items-center gap-4">
                             <Avatar>
                                 <AvatarImage src={complaint.avatarUrl} alt={complaint.studentName} />
                                 <AvatarFallback>{complaint.studentName.charAt(0)}</AvatarFallback>

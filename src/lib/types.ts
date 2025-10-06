@@ -15,7 +15,7 @@ export type Student = User & {
 };
 
 export type Class = {
-  classId: string;
+  id: string;
   teacherId: string;
   students: string[]; // array of studentIds
   avgAttendance: number;
@@ -24,7 +24,7 @@ export type Class = {
 };
 
 export type Complaint = {
-  complaintId: string;
+  id: string;
   studentId: string;
   studentName: string;
   avatarUrl: string;
@@ -56,11 +56,11 @@ export type CalendarEvent = {
 };
 
 export type Ranking = {
+  id: string;
   studentId: string;
   studentName: string;
   avatarUrl: string;
   rank: number;
-  score: number;
   homeworkCompletion: number;
   complaints: number;
   activityScore: number;

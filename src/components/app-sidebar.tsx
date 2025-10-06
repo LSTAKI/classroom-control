@@ -21,6 +21,8 @@ import {
   LogOut,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -33,6 +35,13 @@ const navItems = [
 
 export default function AppSidebar() {
     const pathname = usePathname();
+    const auth = useAuth();
+
+    const handleLogout = () => {
+        if(auth) {
+            signOut(auth);
+        }
+    }
 
     return (
         <Sidebar collapsible="icon">
@@ -72,7 +81,7 @@ export default function AppSidebar() {
                         </SidebarMenuButton>
                      </SidebarMenuItem>
                       <SidebarMenuItem>
-                        <SidebarMenuButton tooltip="Logout">
+                        <SidebarMenuButton tooltip="Logout" onClick={handleLogout}>
                             <LogOut />
                             <span>Logout</span>
                         </SidebarMenuButton>

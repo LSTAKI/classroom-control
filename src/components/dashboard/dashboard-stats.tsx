@@ -1,11 +1,22 @@
+'use client';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { MOCK_CLASS, MOCK_HOMEWORK, MOCK_COMPLAINTS } from "@/lib/mock-data";
 import { BookCopy, MessageSquareWarning, BarChart3, Users } from "lucide-react";
+import { useClass } from "@/hooks/use-class";
+import { useHomework } from "@/hooks/use-homework";
+import { useComplaints } from "@/hooks/use-complaints";
 
 export default function DashboardStats() {
-    const activeHomework = MOCK_HOMEWORK.filter(h => h.status === 'Assigned').length;
-    const pendingComplaints = MOCK_COMPLAINTS.filter(c => c.status === 'Pending').length;
-    const { avgMarks, avgAttendance } = MOCK_CLASS;
+    const { classData, isLoading: classLoading } = useClass('class-101');
+    const { homework, isLoading: homeworkLoading } = useHomework();
+    const { complaints, isLoading: complaintsLoading } = useComplaints();
+
+    if (classLoading || homeworkLoading || complaintsLoading) {
+        return <div>Loading stats...</div>
+    }
+
+    const activeHomework = homework.filter(h => h.status === 'Assigned').length;
+    const pendingComplaints = complaints.filter(c => c.status === 'Pending').length;
+    const { avgMarks, avgAttendance } = classData || { avgMarks: 0, avgAttendance: 0 };
 
     const stats = [
         { title: "Active Homework", value: activeHomework, icon: BookCopy, change: "+2 this week" },

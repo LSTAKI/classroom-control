@@ -1,18 +1,25 @@
+'use client';
 import PageHeader from "@/components/page-header";
 import StudentPerformanceChart from "@/components/charts/student-performance-chart";
 import HomeworkCompletionChart from "@/components/charts/homework-completion-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MOCK_CLASS, MOCK_STUDENTS } from "@/lib/mock-data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import { useStudents } from "@/hooks/use-students";
 
 export default function AnalyticsPage() {
+    const { students, isLoading: studentsLoading } = useStudents();
+
+    if (studentsLoading) {
+        return <div>Loading...</div>
+    }
+
     return (
         <div>
             <PageHeader title="Analytics" description="Deep dive into class and student performance data." />
             <div className="grid gap-8 mt-6">
                 <div className="grid md:grid-cols-2 gap-8">
-                    <StudentPerformanceChart />
+                    <StudentPerformanceChart students={students} />
                     <HomeworkCompletionChart />
                 </div>
                 <Card>
@@ -21,8 +28,8 @@ export default function AnalyticsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {MOCK_STUDENTS.map(student => {
-                                const avgScore = student.marks.reduce((acc, m) => acc + m.score, 0) / student.marks.length;
+                            {students.map(student => {
+                                const avgScore = student.marks && student.marks.length > 0 ? student.marks.reduce((acc, m) => acc + m.score, 0) / student.marks.length : 0;
                                 return (
                                 <div key={student.id} className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted">
                                     <Avatar>

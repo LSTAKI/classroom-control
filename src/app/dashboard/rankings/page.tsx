@@ -1,12 +1,14 @@
+'use client';
 import PageHeader from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MOCK_RANKINGS } from "@/lib/mock-data";
 import { Trophy } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon } from "@/components/icons";
+import { useRankings } from "@/hooks/use-rankings";
 
 export default function RankingsPage() {
+    const { rankings, isLoading } = useRankings();
 
     const getMedal = (rank: number) => {
         if (rank === 1) return <GoldMedalIcon className="h-6 w-6" />;
@@ -14,6 +16,12 @@ export default function RankingsPage() {
         if (rank === 3) return <BronzeMedalIcon className="h-6 w-6" />;
         return <span className="text-sm font-semibold w-6 text-center">{rank}</span>;
     };
+
+    if (isLoading) {
+        return <div>Loading...</div>
+    }
+    
+    const sortedRankings = [...rankings].sort((a, b) => a.rank - b.rank);
     
     return (
         <div>
@@ -38,7 +46,7 @@ export default function RankingsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {MOCK_RANKINGS.map(student => (
+                            {sortedRankings.map(student => (
                                 <TableRow key={student.studentId} className={student.rank <= 3 ? 'bg-primary/5' : ''}>
                                     <TableCell className="font-bold text-lg">
                                         <div className="flex items-center justify-center h-full">
@@ -57,7 +65,7 @@ export default function RankingsPage() {
                                     <TableCell className="text-center">{student.homeworkCompletion}%</TableCell>
                                     <TableCell className="text-center">{student.complaints}</TableCell>
                                     <TableCell className="text-center">{student.activityScore}</TableCell>
-                                    <TableCell className="text-right font-bold text-lg text-primary">{student.score}</TableCell>
+                                    <TableCell className="text-right font-bold text-lg text-primary">{student.rank * 100}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

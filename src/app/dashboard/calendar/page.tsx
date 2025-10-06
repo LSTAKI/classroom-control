@@ -4,31 +4,38 @@ import type { DayPicker } from 'react-day-picker';
 import PageHeader from '@/components/page-header';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MOCK_CALENDAR_EVENTS } from '@/lib/mock-data';
 import type { CalendarEvent } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import AiEventSuggester from '@/components/ai-event-suggester';
+import { useCalendarEvents } from '@/hooks/use-calendar-events';
 
 export default function CalendarPage() {
+    const { calendarEvents, isLoading } = useCalendarEvents();
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(() => {
+        if (isLoading || !calendarEvents) return null;
         const today = format(new Date(), 'yyyy-MM-dd');
-        return MOCK_CALENDAR_EVENTS.find(event => format(new Date(event.date), 'yyyy-MM-dd') === today) || null;
+        return calendarEvents.find(event => format(new Date(event.date), 'yyyy-MM-dd') === today) || null;
     });
 
     const handleDayClick: React.ComponentProps<typeof DayPicker>['onDayClick'] = (day, modifiers) => {
         setDate(day);
+        if(!calendarEvents) return;
         const dayStr = format(day, 'yyyy-MM-dd');
-        const eventOnDay = MOCK_CALENDAR_EVENTS.find(e => format(new Date(e.date), 'yyyy-MM-dd') === dayStr);
+        const eventOnDay = calendarEvents.find(e => format(new Date(e.date), 'yyyy-MM-dd') === dayStr);
         setSelectedEvent(eventOnDay || null);
     };
+
+    if (isLoading) {
+        return <div>Loading...</div>
+    }
     
-    const eventDates = MOCK_CALENDAR_EVENTS.map(event => new Date(event.date));
+    const eventDates = calendarEvents.map(event => new Date(event.date));
     const modifiers = {
-        events: eventDates.filter((_, i) => MOCK_CALENDAR_EVENTS[i].type === 'event'),
-        holidays: eventDates.filter((_, i) => MOCK_CALENDAR_EVENTS[i].type === 'holiday'),
-        homework: eventDates.filter((_, i) => MOCK_CALENDAR_EVENTS[i].type === 'homework'),
+        events: eventDates.filter((_, i) => calendarEvents[i].type === 'event'),
+        holidays: eventDates.filter((_, i) => calendarEvents[i].type === 'holiday'),
+        homework: eventDates.filter((_, i) => calendarEvents[i].type === 'homework'),
     };
 
     const modifiersClassNames = {
@@ -42,7 +49,7 @@ export default function CalendarPage() {
         <div>
             <div className="flex justify-between items-center">
                 <PageHeader title="Calendar" description="View and manage class events, deadlines, and holidays." />
-                <AiEventSuggester events={MOCK_CALENDAR_EVENTS} />
+                <AiEventSuggester events={calendarEvents} />
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 mt-6">
@@ -86,7 +93,6 @@ export default function CalendarPage() {
                                 <h3 className="font-semibold text-lg">{selectedEvent.title}</h3>
                                 {selectedEvent.description && (
                                     <p className="text-muted-foreground mt-1">{selectedEvent.description}</p>
-
                                 )}
                             </div>
                         ) : (

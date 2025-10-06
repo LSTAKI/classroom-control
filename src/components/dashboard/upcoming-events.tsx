@@ -1,11 +1,18 @@
+'use client';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { MOCK_CALENDAR_EVENTS } from "@/lib/mock-data";
 import { Calendar, Clock } from "lucide-react";
 import { format, formatDistanceToNow } from 'date-fns';
 import { Badge, type BadgeProps } from "../ui/badge";
+import { useCalendarEvents } from "@/hooks/use-calendar-events";
 
 export default function UpcomingEvents() {
-    const upcomingEvents = MOCK_CALENDAR_EVENTS
+    const { calendarEvents, isLoading } = useCalendarEvents();
+    
+    if (isLoading) {
+        return <Card>Loading events...</Card>
+    }
+
+    const upcomingEvents = calendarEvents
         .filter(event => new Date(event.date) >= new Date())
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .slice(0, 4);

@@ -1,30 +1,15 @@
 'use client';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { BookCopy, MessageSquareWarning, BarChart3, Users } from "lucide-react";
-import { useClass } from "@/hooks/use-class";
-import { useHomework } from "@/hooks/use-homework";
-import { useComplaints } from "@/hooks/use-complaints";
+
+const stats = [
+    { title: "Active Homework", value: 2, icon: BookCopy, change: "+2 this week" },
+    { title: "Pending Complaints", value: 1, icon: MessageSquareWarning, change: "-1 from yesterday" },
+    { title: "Average Class Score", value: '88.5%', icon: BarChart3, change: "+5% last month" },
+    { title: "Class Attendance", value: '91.7%', icon: Users, change: "Steady" },
+];
 
 export default function DashboardStats() {
-    const { classData, isLoading: classLoading } = useClass('class-101');
-    const { homework, isLoading: homeworkLoading } = useHomework();
-    const { complaints, isLoading: complaintsLoading } = useComplaints();
-
-    if (classLoading || homeworkLoading || complaintsLoading) {
-        return <div>Loading stats...</div>
-    }
-
-    const activeHomework = homework.filter(h => h.status === 'Assigned').length;
-    const pendingComplaints = complaints.filter(c => c.status === 'Pending').length;
-    const { avgMarks, avgAttendance } = classData || { avgMarks: 0, avgAttendance: 0 };
-
-    const stats = [
-        { title: "Active Homework", value: activeHomework, icon: BookCopy, change: "+2 this week" },
-        { title: "Pending Complaints", value: pendingComplaints, icon: MessageSquareWarning, change: "-1 from yesterday" },
-        { title: "Average Class Score", value: `${avgMarks.toFixed(1)}%`, icon: BarChart3, change: "+5% last month" },
-        { title: "Class Attendance", value: `${avgAttendance.toFixed(1)}%`, icon: Users, change: "Steady" },
-    ];
-
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat, index) => (

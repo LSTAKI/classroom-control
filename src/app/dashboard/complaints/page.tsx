@@ -8,15 +8,12 @@ import { format } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Complaint } from "@/lib/types";
-import { useComplaints } from "@/hooks/use-complaints";
-import { doc } from 'firebase/firestore';
-import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
 import { Button } from "@/components/ui/button";
 import AddComplaintDialog from "@/components/add-complaint-dialog";
+import { useComplaints } from "@/hooks/use-complaints";
 
 export default function ComplaintsPage() {
-    const { complaints, isLoading } = useComplaints();
-    const firestore = useFirestore();
+    const { complaints, isLoading, updateComplaintStatus } = useComplaints();
 
     const getStatusBadgeVariant = (status: Complaint['status']) => {
         switch(status) {
@@ -26,12 +23,6 @@ export default function ComplaintsPage() {
             default: return 'secondary';
         }
     }
-
-    const handleUpdateStatus = (complaintId: string, status: Complaint['status']) => {
-        if (!firestore) return;
-        const complaintRef = doc(firestore, 'complaints', complaintId);
-        updateDocumentNonBlocking(complaintRef, { status });
-    };
 
     if (isLoading) {
         return <div>Loading...</div>
@@ -84,8 +75,8 @@ export default function ComplaintsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => handleUpdateStatus(complaint.id, 'Resolved')}>Mark as Resolved</DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleUpdateStatus(complaint.id, 'Withdrawn')}>Withdraw</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => updateComplaintStatus(complaint.id, 'Resolved')}>Mark as Resolved</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => updateComplaintStatus(complaint.id, 'Withdrawn')}>Withdraw</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>

@@ -13,22 +13,21 @@ import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { PlusCircle } from 'lucide-react';
-import { useFirestore, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useStudents } from '@/hooks/use-students';
 import type { Student } from '@/lib/types';
+import { useComplaints } from '@/hooks/use-complaints';
 
 export default function AddComplaintDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [studentId, setStudentId] = useState('');
-  const firestore = useFirestore();
   const { toast } = useToast();
   const { students, isLoading: studentsLoading } = useStudents();
+  const { addComplaint } = useComplaints();
 
   const handleFileComplaint = async () => {
-    if (!firestore || !reason || !studentId) {
+    if (!reason || !studentId) {
       toast({
         variant: 'destructive',
         title: 'Missing fields',
@@ -47,11 +46,10 @@ export default function AddComplaintDialog() {
       teacherId: 'teacher-1', // Hardcoded teacher ID
       reason,
       date: new Date().toISOString(),
-      status: 'Pending',
+      status: 'Pending' as const,
     };
 
-    const complaintsRef = collection(firestore, 'complaints');
-    addDocumentNonBlocking(complaintsRef, newComplaint);
+    addComplaint(newComplaint);
 
     toast({
       title: 'Complaint filed',

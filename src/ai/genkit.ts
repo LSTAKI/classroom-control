@@ -6,11 +6,7 @@ import {googleCloud} from '@genkit-ai/google-cloud';
 export const ai = genkit({
   plugins: [
     googleAI(),
-    googleCloud({
-      // We recommend passing the project ID in as an environment
-      // variable.
-      projectId: process.env.GCLOUD_PROJECT,
-    }),
+    googleCloud,
   ],
   // Log developer-friendly error messages and stack traces.
   // NOTE: This should be disabled in production.

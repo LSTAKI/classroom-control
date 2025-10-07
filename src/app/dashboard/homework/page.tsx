@@ -14,7 +14,7 @@ import AssignHomeworkDialog from "@/components/assign-homework-dialog";
 import ViewSubmissionsDialog from "@/components/view-submissions-dialog";
 
 export default function HomeworkPage() {
-    const { homework, isLoading } = useHomework();
+    const { homework, isLoading, addHomework } = useHomework();
     const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
     const [isSubmissionsDialogOpen, setIsSubmissionsDialogOpen] = useState(false);
 
@@ -36,7 +36,7 @@ export default function HomeworkPage() {
         <div>
             <div className="flex justify-between items-center">
                 <PageHeader title="Homework" description="Manage and assign homework for your class." />
-                <AssignHomeworkDialog />
+                <AssignHomeworkDialog addHomework={addHomework} />
             </div>
             <Card>
                 <CardHeader>

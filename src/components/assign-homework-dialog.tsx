@@ -18,10 +18,13 @@ import { Calendar as CalendarIcon, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useStudents } from '@/hooks/use-students';
-import type { Student } from '@/lib/types';
-import { useHomework } from '@/hooks/use-homework';
+import type { Homework, Student } from '@/lib/types';
 
-export default function AssignHomeworkDialog() {
+interface AssignHomeworkDialogProps {
+    addHomework: (homework: Omit<Homework, 'id'>) => void;
+}
+
+export default function AssignHomeworkDialog({ addHomework }: AssignHomeworkDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -30,7 +33,6 @@ export default function AssignHomeworkDialog() {
   
   const { toast } = useToast();
   const { students, isLoading: studentsLoading } = useStudents();
-  const { addHomework } = useHomework();
 
 
   const handleAssignHomework = async () => {

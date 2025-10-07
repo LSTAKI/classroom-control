@@ -15,16 +15,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useStudents } from '@/hooks/use-students';
-import type { Student } from '@/lib/types';
-import { useComplaints } from '@/hooks/use-complaints';
+import type { Complaint, Student } from '@/lib/types';
 
-export default function AddComplaintDialog() {
+interface AddComplaintDialogProps {
+  addComplaint: (complaint: Omit<Complaint, 'id'>) => void;
+}
+
+export default function AddComplaintDialog({ addComplaint }: AddComplaintDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [studentId, setStudentId] = useState('');
   const { toast } = useToast();
   const { students, isLoading: studentsLoading } = useStudents();
-  const { addComplaint } = useComplaints();
 
   const handleFileComplaint = async () => {
     if (!reason || !studentId) {

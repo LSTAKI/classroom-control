@@ -12,7 +12,7 @@ import { useCalendarEvents } from '@/hooks/use-calendar-events';
 import AddEventDialog from '@/components/add-event-dialog';
 
 export default function CalendarPage() {
-    const { calendarEvents, isLoading } = useCalendarEvents();
+    const { calendarEvents, isLoading, addEvent } = useCalendarEvents();
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(() => {
         if (isLoading || !calendarEvents) return null;
@@ -52,7 +52,7 @@ export default function CalendarPage() {
                 <PageHeader title="Calendar" description="View and manage class events, deadlines, and holidays." />
                 <div className='flex gap-2'>
                   <AiEventSuggester events={calendarEvents} />
-                  <AddEventDialog />
+                  <AddEventDialog addEvent={addEvent} />
                 </div>
             </div>
 

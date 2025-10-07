@@ -13,7 +13,7 @@ import AddComplaintDialog from "@/components/add-complaint-dialog";
 import { useComplaints } from "@/hooks/use-complaints";
 
 export default function ComplaintsPage() {
-    const { complaints, isLoading, updateComplaintStatus } = useComplaints();
+    const { complaints, isLoading, updateComplaintStatus, addComplaint } = useComplaints();
 
     const getStatusBadgeVariant = (status: Complaint['status']) => {
         switch(status) {
@@ -32,7 +32,7 @@ export default function ComplaintsPage() {
         <div>
             <div className="flex justify-between items-center">
                 <PageHeader title="Complaints" description="Track and manage student complaints." />
-                <AddComplaintDialog />
+                <AddComplaintDialog addComplaint={addComplaint} />
             </div>
             <Card>
                 <CardHeader>

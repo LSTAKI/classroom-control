@@ -18,16 +18,19 @@ import { Calendar } from './ui/calendar';
 import { Calendar as CalendarIcon, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { useCalendarEvents } from '@/hooks/use-calendar-events';
+import type { CalendarEvent } from '@/lib/types';
 
-export default function AddEventDialog() {
+interface AddEventDialogProps {
+  addEvent: (event: Omit<CalendarEvent, 'id'>) => void;
+}
+
+export default function AddEventDialog({ addEvent }: AddEventDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState<Date | undefined>();
   const [type, setType] = useState<'event' | 'holiday' | 'meeting' | 'homework'>('event');
   const { toast } = useToast();
-  const { addEvent } = useCalendarEvents();
 
   const handleAddEvent = async () => {
     if (!title || !date || !type) {

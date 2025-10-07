@@ -11,20 +11,10 @@ import {
   DropdownMenuTrigger
 } from "./ui/dropdown-menu";
 import { SidebarTrigger } from "./ui/sidebar";
-import { useUser, useAuth } from "@/firebase";
-import { signOut } from "firebase/auth";
 import { useTeacher } from "@/hooks/use-teacher";
 
 export default function Header() {
-    const { user } = useUser();
-    const auth = useAuth();
-    const { teacher, isLoading } = useTeacher(user?.uid);
-
-    const handleLogout = () => {
-        if(auth) {
-            signOut(auth);
-        }
-    }
+    const { teacher, isLoading } = useTeacher('teacher-1'); // Hardcoded teacher ID
 
     if (isLoading) {
         return <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6 lg:px-8"><div>Loading...</div></header>
@@ -60,11 +50,6 @@ export default function Header() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem>Profile</DropdownMenuItem>
                         <DropdownMenuItem>Settings</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleLogout}>
-                            <LogOut className="mr-2 h-4 w-4" />
-                            Logout
-                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

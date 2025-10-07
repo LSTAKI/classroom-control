@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { Calendar as CalendarIcon, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { useFirestore, addDocumentNonBlocking, useUser } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useStudents } from '@/hooks/use-students';
@@ -30,13 +30,12 @@ export default function AssignHomeworkDialog() {
   const [subject, setSubject] = useState('');
   
   const firestore = useFirestore();
-  const { user } = useUser();
   const { toast } = useToast();
   const { students, isLoading: studentsLoading } = useStudents();
 
 
   const handleAssignHomework = async () => {
-    if (!firestore || !title || !dueDate || !subject || !user) {
+    if (!firestore || !title || !dueDate || !subject) {
       toast({
         variant: 'destructive',
         title: 'Missing fields',
@@ -60,7 +59,7 @@ export default function AssignHomeworkDialog() {
       dueDate: dueDate.toISOString(),
       subject,
       status: 'Assigned',
-      assignedBy: user.uid,
+      assignedBy: 'teacher-1', // Hardcoded teacher ID
       assignedTo: students.map((s: Student) => s.id),
       attachments: [],
     };

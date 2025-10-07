@@ -18,12 +18,9 @@ import {
   Calendar,
   Atom,
   Settings,
-  LogOut,
   Database,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useAuth } from '@/firebase';
-import { signOut } from 'firebase/auth';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -37,13 +34,6 @@ const navItems = [
 
 export default function AppSidebar() {
     const pathname = usePathname();
-    const auth = useAuth();
-
-    const handleLogout = () => {
-        if(auth) {
-            signOut(auth);
-        }
-    }
 
     return (
         <Sidebar collapsible="icon">
@@ -80,12 +70,6 @@ export default function AppSidebar() {
                         <SidebarMenuButton tooltip="Settings">
                             <Settings />
                             <span>Settings</span>
-                        </SidebarMenuButton>
-                     </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton tooltip="Logout" onClick={handleLogout}>
-                            <LogOut />
-                            <span>Logout</span>
                         </SidebarMenuButton>
                      </SidebarMenuItem>
                 </SidebarMenu>

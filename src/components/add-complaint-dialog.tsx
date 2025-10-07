@@ -13,7 +13,7 @@ import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { PlusCircle } from 'lucide-react';
-import { useFirestore, addDocumentNonBlocking, useUser } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useStudents } from '@/hooks/use-students';
@@ -24,12 +24,11 @@ export default function AddComplaintDialog() {
   const [reason, setReason] = useState('');
   const [studentId, setStudentId] = useState('');
   const firestore = useFirestore();
-  const { user } = useUser();
   const { toast } = useToast();
   const { students, isLoading: studentsLoading } = useStudents();
 
   const handleFileComplaint = async () => {
-    if (!firestore || !reason || !studentId || !user) {
+    if (!firestore || !reason || !studentId) {
       toast({
         variant: 'destructive',
         title: 'Missing fields',
@@ -45,7 +44,7 @@ export default function AddComplaintDialog() {
       studentId,
       studentName: selectedStudent.name,
       avatarUrl: selectedStudent.avatarUrl,
-      teacherId: user.uid,
+      teacherId: 'teacher-1', // Hardcoded teacher ID
       reason,
       date: new Date().toISOString(),
       status: 'Pending',

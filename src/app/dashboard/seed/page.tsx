@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { useFirestore, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { doc, collection }from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +21,7 @@ const studentsData = [
 
 const classData = {
     id: 'class-101',
-    teacherId: '', // Will be set to current user
+    teacherId: 'teacher-1', 
     students: ['student-1', 'student-2', 'student-3', 'student-4', 'student-5', 'student-6'],
     avgAttendance: 91.7,
     avgMarks: 88.5,
@@ -83,6 +83,7 @@ const calendarEventsData = [
 ];
 
 const teacherData = {
+    id: 'teacher-1',
     name: 'Sophia Chen',
     email: 'teacher@school.edu',
     role: 'teacher',
@@ -90,7 +91,6 @@ const teacherData = {
 
 export default function SeedPage() {
     const firestore = useFirestore();
-    const { user } = useUser();
     const { toast } = useToast();
     const [isSeeding, setIsSeeding] = useState(false);
 
@@ -99,11 +99,11 @@ export default function SeedPage() {
     }
 
     const handleSeedData = async () => {
-        if (!firestore || !user) {
+        if (!firestore) {
             toast({
                 variant: "destructive",
                 title: "Error",
-                description: "You must be logged in to seed data.",
+                description: "Firestore is not available.",
             });
             return;
         }
@@ -133,13 +133,13 @@ export default function SeedPage() {
             });
 
             // Seed Class
-            const classDocData = { ...classData, teacherId: user.uid };
+            const classDocData = { ...classData };
             const classRef = doc(firestore, 'classes', classDocData.id);
             setDocumentNonBlocking(classRef, classDocData, { merge: true });
             
             // Seed Teacher (User)
-            const teacherRef = doc(firestore, 'users', user.uid);
-            const teacherDocData = { ...teacherData, id: user.uid, avatarUrl: getImage('teacher-avatar') };
+            const teacherRef = doc(firestore, 'users', teacherData.id);
+            const teacherDocData = { ...teacherData, avatarUrl: getImage('teacher-avatar') };
             setDocumentNonBlocking(teacherRef, teacherDocData, { merge: true });
 
 
@@ -149,7 +149,7 @@ export default function SeedPage() {
                 const student = studentsData.find(s => s.id === complaint.studentId);
                 const complaintDocData = {
                     ...complaint,
-                    teacherId: user.uid,
+                    teacherId: teacherData.id,
                     studentName: student?.name,
                     avatarUrl: getImage(complaint.studentId),
                 };
@@ -161,7 +161,7 @@ export default function SeedPage() {
                 const homeworkRef = doc(firestore, 'homeworks', hw.id);
                 const homeworkDocData = {
                     ...hw,
-                    assignedBy: user.uid,
+                    assignedBy: teacherData.id,
                     assignedTo: studentsData.map(s => s.id),
                 };
                 setDocumentNonBlocking(homeworkRef, homeworkDocData, { merge: true });

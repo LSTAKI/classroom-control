@@ -17,21 +17,20 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { Calendar as CalendarIcon, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { useFirestore, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { useCalendarEvents } from '@/hooks/use-calendar-events';
 
 export default function AddEventDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState<Date | undefined>();
-  const [type, setType] = useState<'event' | 'holiday' | 'meeting'>('event');
-  const firestore = useFirestore();
+  const [type, setType] = useState<'event' | 'holiday' | 'meeting' | 'homework'>('event');
   const { toast } = useToast();
+  const { addEvent } = useCalendarEvents();
 
   const handleAddEvent = async () => {
-    if (!firestore || !title || !date || !type) {
+    if (!title || !date || !type) {
       toast({
         variant: 'destructive',
         title: 'Missing fields',
@@ -48,8 +47,7 @@ export default function AddEventDialog() {
       classId: 'class-101', // Hardcoded for now
     };
 
-    const calendarEventsRef = collection(firestore, 'calendar_events');
-    addDocumentNonBlocking(calendarEventsRef, newEvent);
+    addEvent(newEvent);
 
     toast({
       title: 'Event added',
@@ -117,7 +115,7 @@ export default function AddEventDialog() {
             <label htmlFor="type" className="text-right">
               Type
             </label>
-            <Select onValueChange={(value: 'event' | 'holiday' | 'meeting') => setType(value)} defaultValue={type}>
+            <Select onValueChange={(value: 'event' | 'holiday' | 'meeting' | 'homework') => setType(value)} defaultValue={type}>
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Select event type" />
               </SelectTrigger>
@@ -125,6 +123,7 @@ export default function AddEventDialog() {
                 <SelectItem value="event">Event</SelectItem>
                 <SelectItem value="holiday">Holiday</SelectItem>
                 <SelectItem value="meeting">Meeting</SelectItem>
+                <SelectItem value="homework">Homework</SelectItem>
               </SelectContent>
             </Select>
           </div>

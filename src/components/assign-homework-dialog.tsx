@@ -16,11 +16,10 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { Calendar as CalendarIcon, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { useFirestore, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useStudents } from '@/hooks/use-students';
 import type { Student } from '@/lib/types';
+import { useHomework } from '@/hooks/use-homework';
 
 export default function AssignHomeworkDialog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,13 +28,13 @@ export default function AssignHomeworkDialog() {
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [subject, setSubject] = useState('');
   
-  const firestore = useFirestore();
   const { toast } = useToast();
   const { students, isLoading: studentsLoading } = useStudents();
+  const { addHomework } = useHomework();
 
 
   const handleAssignHomework = async () => {
-    if (!firestore || !title || !dueDate || !subject) {
+    if (!title || !dueDate || !subject) {
       toast({
         variant: 'destructive',
         title: 'Missing fields',
@@ -58,14 +57,13 @@ export default function AssignHomeworkDialog() {
       description,
       dueDate: dueDate.toISOString(),
       subject,
-      status: 'Assigned',
+      status: 'Assigned' as const,
       assignedBy: 'teacher-1', // Hardcoded teacher ID
       assignedTo: students.map((s: Student) => s.id),
       attachments: [],
     };
 
-    const homeworkRef = collection(firestore, 'homeworks');
-    addDocumentNonBlocking(homeworkRef, newHomework);
+    addHomework(newHomework);
 
     toast({
       title: 'Homework Assigned',

@@ -1,5 +1,4 @@
 'use client';
-import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -15,8 +14,6 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import type { Homework, Submission, Student } from '@/lib/types';
 import { useSubmissions } from '@/hooks/use-submissions';
-import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
 import { Check, X } from 'lucide-react';
 import { useStudents } from '@/hooks/use-students';
 
@@ -28,9 +25,8 @@ interface ViewSubmissionsDialogProps {
 }
 
 export default function ViewSubmissionsDialog({ homework, children, isOpen, onOpenChange }: ViewSubmissionsDialogProps) {
-  const { submissions, isLoading } = useSubmissions(homework?.id);
+  const { submissions, isLoading, updateSubmissionStatus } = useSubmissions(homework?.id);
   const { students, isLoading: studentsLoading } = useStudents();
-  const firestore = useFirestore();
 
   const getStatusBadgeVariant = (status: Submission['status']) => {
     switch (status) {
@@ -43,9 +39,8 @@ export default function ViewSubmissionsDialog({ homework, children, isOpen, onOp
   };
 
   const handleUpdateStatus = (submissionId: string, status: Submission['status']) => {
-    if (!firestore || !homework) return;
-    const submissionRef = doc(firestore, `homeworks/${homework.id}/submissions`, submissionId);
-    updateDocumentNonBlocking(submissionRef, { status });
+    if (!homework) return;
+    updateSubmissionStatus(submissionId, status);
   };
   
   const getStudentById = (studentId: string): Student | undefined => {

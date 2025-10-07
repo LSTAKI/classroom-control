@@ -115,7 +115,7 @@ export default function AddEventDialog() {
             <label htmlFor="type" className="text-right">
               Type
             </label>
-            <Select onValueChange={(value: 'event' | 'holiday' | 'meeting' | 'homework') => setType(value)} defaultValue={type}>
+            <Select onValueChange={(value: 'event' | 'holiday' | 'meeting' | 'homework') => setType(value)} value={type}>
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Select event type" />
               </SelectTrigger>
